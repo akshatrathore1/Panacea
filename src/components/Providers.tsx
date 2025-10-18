@@ -3,27 +3,18 @@
 import React, { createContext, useContext, useState } from 'react'
 import { ethers } from 'ethers'
 import '@/lib/i18n'
-
-// Types
-export interface User {
-    address: string
-    role: 'producer' | 'intermediary' | 'retailer' | 'consumer' | null
-    name: string
-    phone: string
-    location: string
-    verified: boolean
-}
+import type { UserProfile } from '@/types/user'
 
 interface Web3ContextType {
     provider: ethers.BrowserProvider | null
     signer: ethers.JsonRpcSigner | null
     contract: ethers.Contract | null
-    user: User | null
+    user: UserProfile | null
     isConnected: boolean
     isLoading: boolean
-    connectWallet: () => Promise<void>
+    connectWallet: () => Promise<ethers.JsonRpcSigner | null>
     disconnectWallet: () => void
-    registerUser: (userData: Omit<User, 'address' | 'verified'>) => Promise<void>
+    registerUser: (userData: Omit<UserProfile, 'address' | 'verified'>) => Promise<UserProfile>
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null)
@@ -32,36 +23,87 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null)
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null)
     const [contract, setContract] = useState<ethers.Contract | null>(null)
-    const [user, setUser] = useState<User | null>(null)
+    const [user, setUser] = useState<UserProfile | null>(null)
     const [isConnected, setIsConnected] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
-    const connectWallet = async () => {
+    const persistUser = (profile: UserProfile) => {
+        setUser(profile)
+        localStorage.setItem('krishialok_user', JSON.stringify(profile))
+    }
+
+    const getActiveSigner = async () => {
+        if (signer) {
+            return signer
+        }
+
+        if (provider) {
+            const freshSigner = await provider.getSigner()
+            setSigner(freshSigner)
+            setIsConnected(true)
+            return freshSigner
+        }
+
         if (typeof window !== 'undefined' && window.ethereum) {
-            try {
-                setIsLoading(true)
-                await window.ethereum.request({ method: 'eth_requestAccounts' })
+            const web3Provider = new ethers.BrowserProvider(window.ethereum)
+            const web3Signer = await web3Provider.getSigner()
+            setProvider(web3Provider)
+            setSigner(web3Signer)
+            setIsConnected(true)
+            return web3Signer
+        }
 
-                const web3Provider = new ethers.BrowserProvider(window.ethereum)
-                const web3Signer = await web3Provider.getSigner()
+        throw new Error('Wallet not connected')
+    }
 
-                setProvider(web3Provider)
-                setSigner(web3Signer)
-                setIsConnected(true)
-
-                // Load user data from localStorage
-                const savedUser = localStorage.getItem('krishialok_user')
-                if (savedUser) {
-                    setUser(JSON.parse(savedUser))
-                }
-
-            } catch (error) {
-                console.error('Failed to connect wallet:', error)
-            } finally {
-                setIsLoading(false)
-            }
-        } else {
+    const connectWallet = async () => {
+        if (typeof window === 'undefined' || !window.ethereum) {
             alert('Please install MetaMask!')
+            return null
+        }
+
+        try {
+            setIsLoading(true)
+            await window.ethereum.request({ method: 'eth_requestAccounts' })
+
+            const web3Provider = new ethers.BrowserProvider(window.ethereum)
+            const web3Signer = await web3Provider.getSigner()
+            const walletAddress = (await web3Signer.getAddress()).toLowerCase()
+
+            setProvider(web3Provider)
+            setSigner(web3Signer)
+            setIsConnected(true)
+
+            try {
+                const response = await fetch(`/api/users?address=${walletAddress}`)
+                if (response.ok) {
+                    const profile = (await response.json()) as UserProfile
+                    persistUser(profile)
+                    return web3Signer
+                }
+            } catch (error) {
+                console.error('Failed to load user profile from API:', error)
+            }
+
+            const savedUser = localStorage.getItem('krishialok_user')
+            if (savedUser) {
+                try {
+                    const parsed = JSON.parse(savedUser) as UserProfile
+                    if (parsed.address.toLowerCase() === walletAddress) {
+                        setUser(parsed)
+                    }
+                } catch (error) {
+                    console.error('Failed to parse cached user profile:', error)
+                    localStorage.removeItem('krishialok_user')
+                }
+            }
+
+            return web3Signer
+        } catch (error) {
+            console.error('Failed to connect wallet:', error)
+            return null
+        } finally {
+            setIsLoading(false)
         }
     }
 
@@ -74,24 +116,55 @@ export function Providers({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('krishialok_user')
     }
 
-    const registerUser = async (userData: Omit<User, 'address' | 'verified'>) => {
-        if (!signer) return
+    const registerUser = async (userData: Omit<UserProfile, 'address' | 'verified'>) => {
+        let activeSigner = signer
+
+        if (!activeSigner) {
+            if (typeof window !== 'undefined' && window.ethereum) {
+                try {
+                    const fallbackProvider = new ethers.BrowserProvider(window.ethereum)
+                    const fallbackSigner = await fallbackProvider.getSigner()
+                    activeSigner = fallbackSigner
+
+                    setProvider((current) => current ?? fallbackProvider)
+                    setSigner(fallbackSigner)
+                    setIsConnected(true)
+                } catch (fallbackError) {
+                    console.error('Failed to recover signer from provider:', fallbackError)
+                    throw new Error('Wallet not connected')
+                }
+            } else {
+                throw new Error('Wallet not connected')
+            }
+        }
 
         try {
             setIsLoading(true)
-            const address = await signer.getAddress()
+            const address = (await activeSigner.getAddress()).toLowerCase()
 
-            const newUser: User = {
-                ...userData,
-                address,
-                verified: false
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ...userData,
+                    address,
+                    verified: false
+                })
+            })
+
+            if (!response.ok) {
+                const message = await response.json().catch(() => ({ error: 'Unable to register user' }))
+                throw new Error(message.error || 'Unable to register user')
             }
 
-            setUser(newUser)
-            localStorage.setItem('krishialok_user', JSON.stringify(newUser))
-
+            const savedProfile = (await response.json()) as UserProfile
+            persistUser(savedProfile)
+            return savedProfile
         } catch (error) {
             console.error('Failed to register user:', error)
+            throw error
         } finally {
             setIsLoading(false)
         }

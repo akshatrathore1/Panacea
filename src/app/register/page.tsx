@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
+import type { UserRole } from '@/types/user'
+
+const ROLE_OPTIONS: UserRole[] = ['producer', 'intermediary', 'retailer', 'consumer']
 import {
     UserIcon,
     PhoneIcon,
@@ -22,7 +25,7 @@ function RegisterContent() {
 
     const [currentLang, setCurrentLang] = useState('en')
     const [step, setStep] = useState(1)
-    const [selectedRole, setSelectedRole] = useState<string>('')
+    const [selectedRole, setSelectedRole] = useState<UserRole | ''>('')
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -34,8 +37,8 @@ function RegisterContent() {
 
     useEffect(() => {
         const roleParam = searchParams.get('role')
-        if (roleParam) {
-            setSelectedRole(roleParam)
+        if (roleParam && ROLE_OPTIONS.includes(roleParam as UserRole)) {
+            setSelectedRole(roleParam as UserRole)
             setStep(2)
         }
     }, [searchParams])
@@ -46,52 +49,58 @@ function RegisterContent() {
         }
     }, [user, router])
 
-    const roles = [
-        {
-            id: 'producer',
-            title: t('producer'),
-            description: currentLang === 'en'
-                ? 'Farmers and agricultural producers who grow crops'
-                : 'किसान और कृषि उत्पादक जो फसल उगाते हैं',
-            icon: '🌾',
-            benefits: currentLang === 'en'
-                ? ['Create digital crop batches', 'Direct market access', 'Price transparency', 'Government schemes info']
-                : ['डिजिटल फसल बैच बनाएं', 'प्रत्यक्ष बाजार पहुंच', 'मूल्य पारदर्शिता', 'सरकारी योजना जानकारी']
-        },
-        {
-            id: 'intermediary',
-            title: t('intermediary'),
-            description: currentLang === 'en'
-                ? 'Distributors, agents, aggregators, and food processing companies'
-                : 'वितरक, एजेंट, एग्रीगेटर और खाद्य प्रसंस्करण कंपनियां',
-            icon: '🚛',
-            benefits: currentLang === 'en'
-                ? ['Bulk purchase management', 'Quality verification', 'Supply chain tracking', 'Inventory management']
-                : ['थोक खरीद प्रबंधन', 'गुणवत्ता सत्यापन', 'आपूर्ति श्रृंखला ट्रैकिंग', 'इन्वेंटरी प्रबंधन']
-        },
-        {
-            id: 'retailer',
-            title: t('retailer'),
-            description: currentLang === 'en'
-                ? 'Wholesalers, retail stores, and small vendors'
-                : 'थोक विक्रेता, खुदरा दुकानें और छोटे विक्रेता',
-            icon: '🏪',
-            benefits: currentLang === 'en'
-                ? ['Product authenticity verification', 'Customer trust building', 'Competitive pricing', 'Sales analytics']
-                : ['उत्पाद प्रामाणिकता सत्यापन', 'ग्राहक विश्वास निर्माण', 'प्रतिस्पर्धी मूल्य निर्धारण', 'बिक्री विश्लेषण']
-        },
-        {
-            id: 'consumer',
-            title: t('consumer'),
-            description: currentLang === 'en'
-                ? 'End consumers who purchase agricultural products'
-                : 'अंतिम उपभोक्ता जो कृषि उत्पाद खरीदते हैं',
-            icon: '👥',
-            benefits: currentLang === 'en'
-                ? ['Product traceability', 'Quality assurance', 'Price comparison', 'Farmer support']
-                : ['उत्पाद अनुरेखणीयता', 'गुणवत्ता आश्वासन', 'मूल्य तुलना', 'किसान समर्थन']
-        }
-    ]
+    const roles: Array<{
+        id: UserRole
+        title: string
+        description: string
+        icon: string
+        benefits: string[]
+    }> = [
+            {
+                id: 'producer',
+                title: t('producer'),
+                description: currentLang === 'en'
+                    ? 'Farmers and agricultural producers who grow crops'
+                    : 'किसान और कृषि उत्पादक जो फसल उगाते हैं',
+                icon: '🌾',
+                benefits: currentLang === 'en'
+                    ? ['Create digital crop batches', 'Direct market access', 'Price transparency', 'Government schemes info']
+                    : ['डिजिटल फसल बैच बनाएं', 'प्रत्यक्ष बाजार पहुंच', 'मूल्य पारदर्शिता', 'सरकारी योजना जानकारी']
+            },
+            {
+                id: 'intermediary',
+                title: t('intermediary'),
+                description: currentLang === 'en'
+                    ? 'Distributors, agents, aggregators, and food processing companies'
+                    : 'वितरक, एजेंट, एग्रीगेटर और खाद्य प्रसंस्करण कंपनियां',
+                icon: '🚛',
+                benefits: currentLang === 'en'
+                    ? ['Bulk purchase management', 'Quality verification', 'Supply chain tracking', 'Inventory management']
+                    : ['थोक खरीद प्रबंधन', 'गुणवत्ता सत्यापन', 'आपूर्ति श्रृंखला ट्रैकिंग', 'इन्वेंटरी प्रबंधन']
+            },
+            {
+                id: 'retailer',
+                title: t('retailer'),
+                description: currentLang === 'en'
+                    ? 'Wholesalers, retail stores, and small vendors'
+                    : 'थोक विक्रेता, खुदरा दुकानें और छोटे विक्रेता',
+                icon: '🏪',
+                benefits: currentLang === 'en'
+                    ? ['Product authenticity verification', 'Customer trust building', 'Competitive pricing', 'Sales analytics']
+                    : ['उत्पाद प्रामाणिकता सत्यापन', 'ग्राहक विश्वास निर्माण', 'प्रतिस्पर्धी मूल्य निर्धारण', 'बिक्री विश्लेषण']
+            },
+            {
+                id: 'consumer',
+                title: t('consumer'),
+                description: currentLang === 'en'
+                    ? 'End consumers who purchase agricultural products'
+                    : 'अंतिम उपभोक्ता जो कृषि उत्पाद खरीदते हैं',
+                icon: '👥',
+                benefits: currentLang === 'en'
+                    ? ['Product traceability', 'Quality assurance', 'Price comparison', 'Farmer support']
+                    : ['उत्पाद अनुरेखणीयता', 'गुणवत्ता आश्वासन', 'मूल्य तुलना', 'किसान समर्थन']
+            }
+        ]
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
@@ -99,7 +108,7 @@ function RegisterContent() {
         i18n.changeLanguage(newLang)
     }
 
-    const handleRoleSelect = (roleId: string) => {
+    const handleRoleSelect = (roleId: UserRole) => {
         setSelectedRole(roleId)
         setStep(2)
     }
@@ -122,10 +131,10 @@ function RegisterContent() {
 
     const handleWalletConnect = async () => {
         try {
-            await connectWallet()
-            if (formData.name && selectedRole) {
+            const signer = await connectWallet()
+            if (signer && formData.name && selectedRole) {
                 await registerUser({
-                    role: selectedRole as any,
+                    role: selectedRole,
                     name: formData.name,
                     phone: formData.phone,
                     location: formData.location
@@ -171,8 +180,8 @@ function RegisterContent() {
                         {[1, 2, 3].map((stepNum) => (
                             <div key={stepNum} className="flex items-center">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNum
-                                        ? 'bg-orange-500 text-white'
-                                        : 'bg-gray-200 text-gray-500'
+                                    ? 'bg-orange-500 text-white'
+                                    : 'bg-gray-200 text-gray-500'
                                     }`}>
                                     {stepNum}
                                 </div>
