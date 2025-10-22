@@ -321,7 +321,7 @@ export default function HomePage() {
                             <ul className="space-y-2 text-gray-400">
                                 <li><Link href="/help" className="hover:text-white">Help Center</Link></li>
                                 <li><Link href="/contact" className="hover:text-white">{t('contact')}</Link></li>
-                                <li><Link href="/community" className="hover:text-white">Community</Link></li>
+                                <li><Link href="/dashboard/community" className="hover:text-white">Community</Link></li>
                             </ul>
                         </div>
 
