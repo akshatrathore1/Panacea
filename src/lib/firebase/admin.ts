@@ -1,11 +1,11 @@
-import { App, cert, initializeApp } from 'firebase-admin/app'
+import { App, cert, getApps,getApp,initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 
 let app: App | undefined
 
 const createAdminApp = () => {
-    if (app) {
-        return app
+    if (getApps().length) {
+        return getApp();
     }
 
     const projectId = process.env.FIREBASE_PROJECT_ID
@@ -16,7 +16,7 @@ const createAdminApp = () => {
         throw new Error('Firebase admin credentials are not configured')
     }
 
-    app = initializeApp({
+    return initializeApp({
         credential: cert({
             projectId,
             clientEmail,
@@ -24,7 +24,6 @@ const createAdminApp = () => {
         })
     })
 
-    return app
 }
 
 export const getAdminDb = () => getFirestore(createAdminApp())
