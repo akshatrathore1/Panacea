@@ -23,12 +23,17 @@ export default function ProducerDashboard() {
     const router = useRouter()
     const { user, isConnected } = useWeb3()
     const [currentLang, setCurrentLang] = useState('en')
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (!isConnected || !user || user.role !== 'producer') {
+        if (!loading && (!isConnected || !user || user.role !== 'producer')) {
             router.push('/')
         }
-    }, [isConnected, user, router])
+    }, [isConnected, user, router, loading])
+    
+    useEffect(() => {
+        if (user) setLoading(false)
+    }, [user])
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
