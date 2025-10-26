@@ -23,12 +23,17 @@ export default function ProducerDashboard() {
     const router = useRouter()
     const { user, isConnected } = useWeb3()
     const [currentLang, setCurrentLang] = useState('en')
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (!isConnected || !user || user.role !== 'producer') {
+        if (!loading && (!isConnected || !user || user.role !== 'producer')) {
             router.push('/')
         }
-    }, [isConnected, user, router])
+    }, [isConnected, user, router, loading])
+    
+    useEffect(() => {
+        if (user) setLoading(false)
+    }, [user])
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
@@ -142,7 +147,7 @@ export default function ProducerDashboard() {
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center">
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
@@ -150,10 +155,6 @@ export default function ProducerDashboard() {
                                 <GlobeAltIcon className="w-5 h-5" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
-
-                            <div className="text-sm text-gray-600">
-                                {user.name}
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -302,8 +303,8 @@ export default function ProducerDashboard() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${batch.status === 'Sold'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-yellow-100 text-yellow-800'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
                                                         }`}>
                                                         {batch.status}
                                                     </span>
@@ -406,7 +407,7 @@ export default function ProducerDashboard() {
                                     <p className="text-xs text-blue-600 mt-1">8 replies</p>
                                 </div>
                                 <Link
-                                    href="/community"
+                                    href="/dashboard/community"
                                     className={`text-sm text-blue-600 hover:text-blue-800 font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}
                                 >
                                     {currentLang === 'en' ? 'View all discussions →' : 'सभी चर्चाएं देखें →'}

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { ethers } from 'ethers'
 import '@/lib/i18n'
 import type { UserProfile } from '@/types/user'
@@ -36,29 +36,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
         localStorage.setItem('krishialok_user', JSON.stringify(profile))
     }
 
-    const getActiveSigner = async () => {
-        if (signer) {
-            return signer
-        }
-
-        if (provider) {
-            const freshSigner = await provider.getSigner()
-            setSigner(freshSigner)
-            setIsConnected(true)
-            return freshSigner
+       useEffect(() => {
+        const savedUser = localStorage.getItem('krishialok_user')
+        if (savedUser) {
+            try {
+                const parsed = JSON.parse(savedUser)
+                setUser(parsed)
+                setIsConnected(true)
+            } catch (err) {
+                console.error('Failed to parse saved user:', err)
+                localStorage.removeItem('krishialok_user')
+            }
         }
 
         if (typeof window !== 'undefined' && window.ethereum) {
             const web3Provider = new ethers.BrowserProvider(window.ethereum)
-            const web3Signer = await web3Provider.getSigner()
             setProvider(web3Provider)
-            setSigner(web3Signer)
-            setIsConnected(true)
-            return web3Signer
+            web3Provider.getSigner().then(setSigner).catch(() => {})
         }
-
-        throw new Error('Wallet not connected')
-    }
+    }, [])
 
     const connectWallet = async () => {
         if (typeof window === 'undefined' || !window.ethereum) {
