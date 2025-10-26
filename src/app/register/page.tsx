@@ -330,23 +330,6 @@ function RegisterContent() {
 
                                 <div>
                                     <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {t('location')}
-                                    </label>
-                                    <div className="relative">
-                                        <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            value={formData.location}
-                                            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                            className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                            placeholder={currentLang === 'en' ? 'City, State' : 'शहर, राज्य'}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Aadhaar Number' : 'आधार संख्या'}
                                     </label>
                                     <div className="relative">
