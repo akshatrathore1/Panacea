@@ -15,6 +15,8 @@ interface Web3ContextType {
     connectWallet: () => Promise<ethers.JsonRpcSigner | null>
     disconnectWallet: () => void
     registerUser: (userData: Omit<UserProfile, 'address' | 'verified'>) => Promise<UserProfile>
+    // Persist a user profile into the context/localStorage (used for phone-only sign-in)
+    setLocalUser: (profile: UserProfile) => void
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null)
@@ -30,6 +32,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const persistUser = (profile: UserProfile) => {
         setUser(profile)
         localStorage.setItem('krishialok_user', JSON.stringify(profile))
+    }
+
+    const setLocalUser = (profile: UserProfile) => {
+        // Persist profile locally; this represents an authenticated user even without a wallet
+        persistUser(profile)
+        // Do not claim wallet connection; keep isConnected reflecting wallet state
+        setIsConnected(false)
     }
 
        useEffect(() => {
@@ -113,30 +122,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
 
     const registerUser = async (userData: Omit<UserProfile, 'address' | 'verified'>) => {
+        // Allow registration even if wallet is not connected.
+        // If a signer is available, use its address. Otherwise, fall back to a phone-derived address.
+        let address: string | null = null
         let activeSigner = signer
 
-        if (!activeSigner) {
-            if (typeof window !== 'undefined' && window.ethereum) {
-                try {
-                    const fallbackProvider = new ethers.BrowserProvider(window.ethereum)
-                    const fallbackSigner = await fallbackProvider.getSigner()
-                    activeSigner = fallbackSigner
+        if (activeSigner) {
+            try {
+                address = (await activeSigner.getAddress()).toLowerCase()
+            } catch (err) {
+                console.warn('Could not read address from signer, falling back to phone-based id', err)
+                address = null
+            }
+        }
 
-                    setProvider((current) => current ?? fallbackProvider)
-                    setSigner(fallbackSigner)
-                    setIsConnected(true)
-                } catch (fallbackError) {
-                    console.error('Failed to recover signer from provider:', fallbackError)
-                    throw new Error('Wallet not connected')
-                }
+        if (!address) {
+            // No wallet available or failed to read address. Use phone-derived fallback id.
+            if (userData.phone) {
+                // Normalize phone by trimming and lowercasing; prefix to avoid collisions with real addresses
+                address = `phone:${userData.phone.trim().toLowerCase()}`
             } else {
-                throw new Error('Wallet not connected')
+                // As a last resort create a timestamp-based anonymous id
+                address = `anon:${Date.now()}`
             }
         }
 
         try {
             setIsLoading(true)
-            const address = (await activeSigner.getAddress()).toLowerCase()
 
             const response = await fetch('/api/users', {
                 method: 'POST',
@@ -176,6 +188,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         connectWallet,
         disconnectWallet,
         registerUser
+        ,
+        setLocalUser
     }
 
     return (

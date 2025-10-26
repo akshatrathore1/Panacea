@@ -1,5 +1,5 @@
 'use client'
-
+import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -140,6 +140,12 @@ export default function IntermediaryDashboard() {
                         >
                             <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                         </button>
+                        <Link
+                            href="/marketplace"
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center space-x-2"
+                        >
+                            {t('marketplace')}
+                        </Link>
                     </div>
                 </div>
             </header>

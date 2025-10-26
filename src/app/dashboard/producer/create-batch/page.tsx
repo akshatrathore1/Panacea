@@ -15,6 +15,11 @@ import {
     QrCodeIcon
 } from '@heroicons/react/24/outline'
 
+import { getClientDb } from '../../../../lib/firebase/client'
+import { collection, addDoc } from 'firebase/firestore'
+import { ethers } from 'ethers'
+import { blockchainHelpers } from '../../../../lib/blockchain'
+
 export default function CreateBatchPage() {
     const { t, i18n } = useTranslation()
     const router = useRouter()
@@ -86,14 +91,71 @@ export default function CreateBatchPage() {
         setIsLoading(true)
 
         try {
-            // Simulate blockchain transaction
-            await new Promise(resolve => setTimeout(resolve, 3000))
-
             // Generate batch ID
             const batchId = 'BATCH_' + Date.now()
-            setGeneratedBatchId(batchId)
 
-            // Simulate success
+            // Try to write to blockchain if wallet available (best-effort)
+            try {
+                if ((window as any).ethereum) {
+                    const provider = new ethers.BrowserProvider((window as any).ethereum)
+                    await (window as any).ethereum.request({ method: 'eth_requestAccounts' })
+                    const signer = await provider.getSigner()
+
+                    await blockchainHelpers.createBatch(
+                        signer,
+                        batchId,
+                        formData.cropType || 'unknown',
+                        formData.farmLocation || '',
+                        formData.harvestDate ? new Date(formData.harvestDate).getTime() : Date.now(),
+                        JSON.stringify({ variety: formData.variety, weight: formData.weight })
+                    )
+                }
+            } catch (chainErr) {
+                // Non-fatal: continue and persist to Firestore for marketplace indexing
+                console.warn('Blockchain write failed (continuing):', chainErr)
+            }
+
+            // Persist listing to Firestore for marketplace indexing
+            try {
+                const db = getClientDb()
+                const batchesCol = collection(db, 'batches')
+
+                // Attempt to fetch producer address if wallet present
+                let producerAddress = ''
+                if ((window as any).ethereum) {
+                    try {
+                        const provider = new ethers.BrowserProvider((window as any).ethereum)
+                        const signer = await provider.getSigner()
+                        producerAddress = await signer.getAddress()
+                    } catch (addrErr) {
+                        console.warn('Could not read wallet address:', addrErr)
+                    }
+                }
+
+                await addDoc(batchesCol, {
+                    batchId,
+                    cropType: formData.cropType,
+                    variety: formData.variety,
+                    weight: Number(formData.weight) || 0,
+                    qualityGrade: formData.qualityGrade,
+                    pricePerKg: Number(formData.pricePerKg) || 0,
+                    totalPrice: (Number(formData.pricePerKg) || 0) * (Number(formData.weight) || 0),
+                    location: formData.farmLocation,
+                    farmerName: producerAddress || 'Producer',
+                    farmerPhone: '',
+                    postedDate: new Date().toISOString(),
+                    images: [],
+                    verified: false,
+                    organic: formData.organicCertified || false,
+                    description: '',
+                    distance: ''
+                })
+            } catch (dbErr) {
+                console.warn('Failed to save batch to Firestore:', dbErr)
+            }
+
+            // Set UI state
+            setGeneratedBatchId(batchId)
             setShowSuccess(true)
             setStep(3)
 

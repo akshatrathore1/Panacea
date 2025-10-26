@@ -62,11 +62,18 @@ export async function POST(request: NextRequest) {
     try {
         const body = (await request.json()) as Partial<UserRegistrationPayload>
 
-        if (!body.address || !body.role || !body.name || !body.phone || !body.location) {
-            return NextResponse.json({ error: 'address, role, name, phone, and location are required' }, { status: 400 })
+        // Allow missing address for users who don't have a wallet (e.g., consumers).
+        if (!body.role || !body.name || !body.phone || !body.location) {
+            return NextResponse.json({ error: 'role, name, phone, and location are required' }, { status: 400 })
         }
 
-        const normalized = normalizeAddress(body.address)
+        let inputAddress = body.address
+        if (!inputAddress) {
+            // Use a phone-derived id to avoid requiring MetaMask for consumers
+            inputAddress = `phone:${body.phone}`
+        }
+
+        const normalized = normalizeAddress(inputAddress)
         const adminDb = getAdminDb()
         const docRef = adminDb.collection(COLLECTION).doc(normalized)
         const existing = await docRef.get()

@@ -5,12 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
+import type { UserProfile, UserRole } from '@/types/user'
 import {
     WalletIcon,
     PhoneIcon,
-    LockClosedIcon,
-    EyeIcon,
-    EyeSlashIcon,
     ArrowLeftIcon,
     GlobeAltIcon
 } from '@heroicons/react/24/outline'
@@ -18,16 +16,14 @@ import {
 export default function LoginPage() {
     const { t, i18n } = useTranslation()
     const router = useRouter()
-    const { connectWallet, isConnected, user, isLoading } = useWeb3()
+    const { connectWallet, isConnected, user, isLoading, setLocalUser } = useWeb3()
 
     const [currentLang, setCurrentLang] = useState('en')
     const [loginMethod, setLoginMethod] = useState<'wallet' | 'phone'>('wallet')
     const [phoneNumber, setPhoneNumber] = useState('')
-    const [password, setPassword] = useState('')
-    const [showPassword, setShowPassword] = useState(false)
     const [otp, setOtp] = useState('')
     const [otpSent, setOtpSent] = useState(false)
-    const [rememberMe, setRememberMe] = useState(false)
+    
 
     useEffect(() => {
         if (isConnected && user) {
@@ -60,10 +56,34 @@ export default function LoginPage() {
 
         // Simulate OTP verification
         if (otp === '123456') {
-            // Simulate successful login - redirect to dashboard
-            // In real implementation, this would verify credentials
-            alert(currentLang === 'en' ? 'Login successful! (Demo)' : 'लॉगिन सफल! (डेमो)')
-            router.push('/dashboard/producer') // Default redirect for demo
+            // Simulate successful login - attempt to fetch user profile by phone-based id
+            try {
+                const phoneAddr = `phone:${phoneNumber}`
+                const res = await fetch(`/api/users?address=${encodeURIComponent(phoneAddr)}`)
+                if (res.ok) {
+                    const profile = await res.json()
+                    // Persist profile into Web3 context so other parts of app see logged-in user
+                    setLocalUser(profile)
+                    router.push(`/dashboard/${profile.role}`)
+                    return
+                }
+
+                // If user not found, create a minimal consumer-like session locally
+                const fallbackProfile: UserProfile = {
+                    address: phoneAddr,
+                    role: 'consumer' as UserRole,
+                    name: phoneNumber,
+                    phone: phoneNumber,
+                    location: '',
+                    verified: false
+                }
+                setLocalUser(fallbackProfile)
+                alert(currentLang === 'en' ? 'Login successful! (Demo)' : 'लॉगिन सफल! (डेमो)')
+                router.push(`/dashboard/${fallbackProfile.role}`)
+            } catch (err) {
+                console.error('Phone login failed:', err)
+                alert(currentLang === 'en' ? 'Login failed' : 'लॉगिन विफल')
+            }
         } else {
             alert(currentLang === 'en' ? 'Invalid OTP. Use 123456 for demo.' : 'अमान्य OTP। डेमो के लिए 123456 का उपयोग करें।')
         }
@@ -221,31 +241,11 @@ export default function LoginPage() {
 
                                 {!otpSent ? (
                                     <div>
-                                        <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                            {currentLang === 'en' ? 'Password' : 'पासवर्ड'}
-                                        </label>
-                                        <div className="relative">
-                                            <LockClosedIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                            <input
-                                                type={showPassword ? 'text' : 'password'}
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                className={`w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                                placeholder={currentLang === 'en' ? 'Enter your password' : 'अपना पासवर्ड दर्ज करें'}
-                                                required
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                            >
-                                                {showPassword ? (
-                                                    <EyeSlashIcon className="w-5 h-5" />
-                                                ) : (
-                                                    <EyeIcon className="w-5 h-5" />
-                                                )}
-                                            </button>
-                                        </div>
+                                        <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {currentLang === 'en'
+                                                ? 'We will send a 6-digit OTP to this phone number to sign you in.'
+                                                : 'हम आपको साइन इन करने के लिए इस फोन नंबर पर 6-अंकीय OTP भेजेंगे।'}
+                                        </p>
                                     </div>
                                 ) : (
                                     <div>
@@ -271,27 +271,7 @@ export default function LoginPage() {
                                     </div>
                                 )}
 
-                                {!otpSent && (
-                                    <div className="flex items-center justify-between">
-                                        <label className={`flex items-center ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                            <input
-                                                type="checkbox"
-                                                checked={rememberMe}
-                                                onChange={(e) => setRememberMe(e.target.checked)}
-                                                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                                            />
-                                            <span className="ml-2 text-sm text-gray-600">
-                                                {currentLang === 'en' ? 'Remember me' : 'मुझे याद रखें'}
-                                            </span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            className={`text-sm text-green-600 hover:text-green-700 font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                        >
-                                            {currentLang === 'en' ? 'Forgot password?' : 'पासवर्ड भूल गए?'}
-                                        </button>
-                                    </div>
-                                )}
+                                {/* No password needed for OTP login — removed Remember me / Forgot password */}
 
                                 <button
                                     type="submit"

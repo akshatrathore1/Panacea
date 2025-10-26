@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useWeb3 } from '@/components/Providers'
 import { useTranslation } from 'react-i18next'
 import {
     UserIcon,
@@ -20,7 +22,21 @@ import Link from 'next/link'
 
 export default function ConsumerDashboard() {
     const { t, i18n } = useTranslation()
+    const router = useRouter()
+    const { user } = useWeb3()
     const [currentLang, setCurrentLang] = useState('en')
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        if (user) setLoading(false)
+    }, [user])
+
+    useEffect(() => {
+        // redirect to home if not authenticated as consumer
+        if (!loading && (!user || user.role !== 'consumer')) {
+            router.push('/')
+        }
+    }, [user, router, loading])
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
@@ -164,7 +180,9 @@ export default function ConsumerDashboard() {
                                     {currentLang === 'en' ? 'Consumer Dashboard' : 'उपभोक्ता डैशबोर्ड'}
                                 </h1>
                                 <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Welcome back, Priya Sharma!' : 'वापस स्वागत है, प्रिया शर्मा!'}
+                                    {currentLang === 'en'
+                                        ? `Welcome back, ${user?.name ?? 'Priya Sharma'}!`
+                                        : `वापस स्वागत है, ${user?.name ?? 'प्रिया शर्मा'}!`}
                                 </p>
                             </div>
                         </div>

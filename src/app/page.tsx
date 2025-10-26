@@ -119,13 +119,6 @@ export default function HomePage() {
                                     {currentLang === 'en' ? 'हिंदी' : 'English'}
                                 </span>
                             </button>
-
-                            <Link
-                                href="/login"
-                                className="bg-white text-orange-600 hover:bg-gray-50 px-4 py-2 rounded-md font-medium transition-colors"
-                            >
-                                {t('login')}
-                            </Link>
                         </div>
                     </div>
                 </div>
@@ -164,11 +157,12 @@ export default function HomePage() {
                         </Link>
 
                         <Link
-                            href="/marketplace"
-                            className="border-2 border-orange-600 text-orange-600 hover:bg-orange-50 px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
+                            href="/login"
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center space-x-2"
                         >
-                            {t('marketplace')}
+                            {t('login')}
                         </Link>
+
                     </div>
                 </div>
             </section>

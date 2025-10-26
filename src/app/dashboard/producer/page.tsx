@@ -26,10 +26,12 @@ export default function ProducerDashboard() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (!loading && (!isConnected || !user || user.role !== 'producer')) {
+        // Allow phone-only users (not wallet-connected) to access producer dashboard.
+        // Only redirect if there is no user or the role doesn't match.
+        if (!loading && (!user || user.role !== 'producer')) {
             router.push('/')
         }
-    }, [isConnected, user, router, loading])
+    }, [user, router, loading])
     
     useEffect(() => {
         if (user) setLoading(false)
@@ -147,7 +149,7 @@ export default function ProducerDashboard() {
                             </div>
                         </div>
 
-                        <div className="flex items-center">
+                        <div className="flex gap-6 items-center">
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
@@ -155,6 +157,12 @@ export default function ProducerDashboard() {
                                 <GlobeAltIcon className="w-5 h-5" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
+                            <Link
+                            href="/marketplace"
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-4 rounded-lg font-semibold text-sm transition-colors flex items-center"
+                        >
+                            {t('marketplace')}
+                        </Link>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import {
@@ -32,81 +32,37 @@ export default function MarketplacePage() {
         i18n.changeLanguage(newLang)
     }
 
-    // Mock marketplace data
-    const listings = [
-        {
-            id: 'BATCH001',
-            cropType: 'Wheat',
-            variety: 'Durum',
-            weight: 500,
-            qualityGrade: 'A',
-            pricePerKg: 2500,
-            totalPrice: 1250000,
-            location: 'Ludhiana, Punjab',
-            farmerName: 'Ram Singh',
-            farmerPhone: '+91 98765 43210',
-            postedDate: '2 days ago',
-            images: ['/api/placeholder/200/150'],
-            verified: true,
-            organic: false,
-            description: 'High quality durum wheat, freshly harvested and properly stored.',
-            distance: '12 km'
-        },
-        {
-            id: 'BATCH002',
-            cropType: 'Rice',
-            variety: 'Basmati',
-            weight: 300,
-            qualityGrade: 'Premium',
-            pricePerKg: 4500,
-            totalPrice: 1350000,
-            location: 'Amritsar, Punjab',
-            farmerName: 'Gurpreet Kaur',
-            farmerPhone: '+91 98765 43211',
-            postedDate: '1 day ago',
-            images: ['/api/placeholder/200/150'],
-            verified: true,
-            organic: true,
-            description: 'Premium basmati rice with authentic aroma and long grains.',
-            distance: '25 km'
-        },
-        {
-            id: 'BATCH003',
-            cropType: 'Tomato',
-            variety: 'Cherry',
-            weight: 100,
-            qualityGrade: 'A',
-            pricePerKg: 8000,
-            totalPrice: 800000,
-            location: 'Chandigarh',
-            farmerName: 'Rajesh Kumar',
-            farmerPhone: '+91 98765 43212',
-            postedDate: '3 hours ago',
-            images: ['/api/placeholder/200/150'],
-            verified: true,
-            organic: false,
-            description: 'Fresh cherry tomatoes, perfect for salads and cooking.',
-            distance: '8 km'
-        },
-        {
-            id: 'BATCH004',
-            cropType: 'Potato',
-            variety: 'Red',
-            weight: 1000,
-            qualityGrade: 'B',
-            pricePerKg: 1800,
-            totalPrice: 1800000,
-            location: 'Jalandhar, Punjab',
-            farmerName: 'Hardeep Singh',
-            farmerPhone: '+91 98765 43213',
-            postedDate: '1 week ago',
-            images: ['/api/placeholder/200/150'],
-            verified: false,
-            organic: false,
-            description: 'Good quality red potatoes suitable for wholesale purchase.',
-            distance: '45 km'
+    // Listings state (loaded from Firestore 'batches' collection)
+    const [listings, setListings] = useState<any[]>([])
+    const [isLoadingListings, setIsLoadingListings] = useState(true)
+
+    useEffect(() => {
+        let mounted = true
+
+        async function fetchListings() {
+            try {
+                const { getClientDb } = await import('../../lib/firebase/client')
+                const { collection, getDocs, query, orderBy } = await import('firebase/firestore')
+                const db = getClientDb()
+                const batchesCol = collection(db, 'batches')
+                const q = query(batchesCol, orderBy('postedDate', 'desc'))
+                const snapshot = await getDocs(q)
+                const items: any[] = []
+                snapshot.forEach(doc => {
+                    items.push({ id: doc.id, ...(doc.data() as any) })
+                })
+                if (mounted) setListings(items)
+            } catch (err) {
+                console.warn('Failed to load marketplace listings:', err)
+            } finally {
+                if (mounted) setIsLoadingListings(false)
+            }
         }
-    ]
+
+        fetchListings()
+
+        return () => { mounted = false }
+    }, [])
 
     const cropTypes = [
         { value: '', label: currentLang === 'en' ? 'All Crops' : 'सभी फसलें' },
@@ -184,12 +140,6 @@ export default function MarketplacePage() {
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
 
-                            <Link
-                                href="/login"
-                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"
-                            >
-                                {t('login')}
-                            </Link>
                         </div>
                     </div>
                 </div>

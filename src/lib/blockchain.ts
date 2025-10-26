@@ -448,6 +448,13 @@ export const blockchainHelpers = {
         harvestDate: number,
         additionalInfo: string
     ) {
+        // If contract address is not configured to a valid Ethereum address, skip on-chain write.
+        const validAddress = /^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS)
+        if (!validAddress) {
+            console.warn('CONTRACT_ADDRESS not set or invalid; skipping on-chain createBatch')
+            return null
+        }
+
         const contract = getContract(signer)
         const tx = await contract.createBatch(batchId, productType, origin, harvestDate, additionalInfo)
         return await tx.wait()

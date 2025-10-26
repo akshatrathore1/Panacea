@@ -21,7 +21,7 @@ function RegisterContent() {
     const { t, i18n } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
-    const { connectWallet, registerUser, isConnected, user, isLoading } = useWeb3()
+    const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser } = useWeb3()
 
     const [currentLang, setCurrentLang] = useState('en')
     const [step, setStep] = useState(1)
@@ -123,6 +123,36 @@ function RegisterContent() {
         }
 
         if (otp === '123456') { // Simulate OTP verification
+            // If consumer, skip wallet step and register immediately
+            if (selectedRole === 'consumer') {
+                try {
+                    console.log('Registering consumer...', { selectedRole, formData })
+                    const saved = await registerUser({
+                        role: selectedRole as UserRole,
+                        name: formData.name,
+                        phone: formData.phone,
+                        location: formData.location
+                    })
+                    console.log('Registered consumer, saved profile:', saved)
+                    // Ensure context/localStorage is set (registerUser persists, but call setLocalUser to be explicit)
+                    try { setLocalUser(saved) } catch (e) { /* ignore */ }
+
+                    // Try replace first, then fallback to push after short delay if not redirected
+                    await router.replace(`/dashboard/${saved.role}`)
+                    // small delay to allow navigation; if not navigated, fallback
+                    await new Promise((res) => setTimeout(res, 200))
+                    if (typeof window !== 'undefined' && !window.location.pathname.startsWith(`/dashboard/${saved.role}`)) {
+                        console.warn('router.replace did not navigate, forcing push.')
+                        router.push(`/dashboard/${saved.role}`)
+                    }
+                } catch (err) {
+                    console.error('Registration error (consumer):', err)
+                    alert(currentLang === 'en' ? 'Registration failed' : 'पंजीकरण विफल')
+                }
+                return
+            }
+
+            // Other roles proceed to wallet connection (optional)
             setStep(3)
         } else {
             alert(currentLang === 'en' ? 'Invalid OTP. Use 123456 for demo.' : 'अमान्य OTP। डेमो के लिए 123456 का उपयोग करें।')
@@ -397,6 +427,37 @@ function RegisterContent() {
                                             currentLang === 'en' ? 'Connect MetaMask' : 'MetaMask कनेक्ट करें'
                                         )}
                                     </button>
+
+                                    {/* Allow skipping wallet connection — registration will still proceed using phone-derived id */}
+                                    <div className="mt-4">
+                                        <button
+                                            onClick={async () => {
+                                                if (!selectedRole) {
+                                                    alert(currentLang === 'en' ? 'Please select a role first' : 'कृपया पहले एक भूमिका चुनें')
+                                                    return
+                                                }
+
+                                                try {
+                                                    const saved = await registerUser({
+                                                        role: selectedRole as UserRole,
+                                                        name: formData.name,
+                                                        phone: formData.phone,
+                                                        location: formData.location
+                                                    })
+                                                    // Use role returned by server (saved profile) to redirect reliably
+                                                    console.log('Registered (skip) saved profile:', saved)
+                                                    await router.replace(`/dashboard/${saved.role}`)
+                                                } catch (err) {
+                                                    console.error('Registration skipped wallet error:', err)
+                                                    alert(currentLang === 'en' ? 'Registration failed' : 'पंजीकरण विफल')
+                                                }
+                                            }}
+                                            className="text-sm text-gray-600 underline"
+                                            disabled={isLoading}
+                                        >
+                                            {currentLang === 'en' ? 'Skip & continue without wallet' : 'वॉलेट के बिना छोड़ें और जारी रखें'}
+                                        </button>
+                                    </div>
 
                                     <div className={`mt-6 text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en'
