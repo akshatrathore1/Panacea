@@ -1,38 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Timestamp, type DocumentData } from 'firebase-admin/firestore'
-import { getAdminDb } from '@/lib/firebase/admin'
-import { UserProfile, UserRegistrationPayload } from '@/types/user'
+import { getFirestore } from '../../../lib/firebaseAdmin'
+import type { UserProfile, UserRegistrationPayload } from '@/types/user'
 
 const COLLECTION = 'users'
-
-const normalizeAddress = (address: string) => address.trim().toLowerCase()
-
-const formatTimestamp = (value: unknown) => {
-    if (value instanceof Timestamp) {
-        return value.toDate().toISOString()
-    }
-
-    if (typeof value === 'string') {
-        return value
-    }
-
-    if (value instanceof Date) {
-        return value.toISOString()
-    }
-
-    return undefined
-}
-
-const serializeUser = (docData: DocumentData, address: string): UserProfile => ({
-    address,
-    role: docData.role,
-    name: docData.name,
-    phone: docData.phone,
-    location: docData.location,
-    verified: Boolean(docData.verified),
-    createdAt: formatTimestamp(docData.createdAt),
-    updatedAt: formatTimestamp(docData.updatedAt)
-})
 
 export async function GET(request: NextRequest) {
     try {
@@ -43,17 +13,17 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'address query parameter is required' }, { status: 400 })
         }
 
-        const normalized = normalizeAddress(address)
-        const db = getAdminDb()
-        const doc = await db.collection(COLLECTION).doc(normalized).get()
+        const db = getFirestore()
+        const snap = await db.collection(COLLECTION).where('address', '==', address.toLowerCase()).limit(1).get()
 
-        if (!doc.exists) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        if (snap.empty) {
+            return NextResponse.json(null)
         }
 
-        return NextResponse.json(serializeUser(doc.data() || {}, normalized))
+        const doc = snap.docs[0]
+        return NextResponse.json({ id: doc.id, ...(doc.data() as any) } as UserProfile)
     } catch (error) {
-        console.error('Failed to fetch user profile', error)
+        console.error('GET /api/users error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
@@ -62,39 +32,23 @@ export async function POST(request: NextRequest) {
     try {
         const body = (await request.json()) as Partial<UserRegistrationPayload>
 
-        if (!body.address || !body.role || !body.name || !body.phone || !body.location) {
-            return NextResponse.json({ error: 'address, role, name, phone, and location are required' }, { status: 400 })
+        if (!body.address) {
+            return NextResponse.json({ error: 'address required' }, { status: 400 })
         }
 
-        const normalized = normalizeAddress(body.address)
-        const db = getAdminDb()
-        const docRef = db.collection(COLLECTION).doc(normalized)
-        const existing = await docRef.get()
-
-        const now = Timestamp.now()
+        const db = getFirestore()
         const payload = {
-            address: normalized,
-            role: body.role,
-            name: body.name,
-            phone: body.phone,
-            location: body.location,
-            verified: Boolean(body.verified),
-            updatedAt: now,
-            createdAt: existing.exists ? existing.data()?.createdAt ?? now : now
+            ...body,
+            address: String(body.address).toLowerCase(),
+            verified: !!body.verified,
+            createdAt: new Date().toISOString()
         }
+        const ref = await db.collection(COLLECTION).add(payload)
+        const saved = (await ref.get()).data()
 
-        await docRef.set(payload, { merge: true })
-        const saved = await docRef.get()
-        const savedData = saved.data()
-
-        if (!savedData) {
-            return NextResponse.json({ error: 'Failed to persist user' }, { status: 500 })
-        }
-
-        const status = existing.exists ? 200 : 201
-        return NextResponse.json(serializeUser(savedData, normalized), { status })
+        return NextResponse.json({ id: ref.id, ...(saved as any) }, { status: 201 })
     } catch (error) {
-        console.error('Failed to create or update user profile', error)
+        console.error('POST /api/users error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

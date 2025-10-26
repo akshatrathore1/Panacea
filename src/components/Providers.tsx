@@ -4,6 +4,10 @@ import React, { createContext, useContext, useState } from 'react'
 import { ethers } from 'ethers'
 import '@/lib/i18n'
 import type { UserProfile } from '@/types/user'
+import contractABI from '@/lib/contractABI.json'; // adjust path to where your ABI is stored
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xYourContractAddressHere";
+
+
 
 interface Web3ContextType {
     provider: ethers.BrowserProvider | null
@@ -73,6 +77,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
             setProvider(web3Provider)
             setSigner(web3Signer)
             setIsConnected(true)
+            // Initialize contract
+            try {
+            const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, contractABI, web3Signer);
+            setContract(contractInstance);
+            console.log("✅ Contract connected:", CONTRACT_ADDRESS);
+            } catch (err) {
+            console.error("❌ Failed to initialize contract:", err);
+            }
+
 
             try {
                 const response = await fetch(`/api/users?address=${walletAddress}`)
@@ -189,10 +202,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     )
 }
 
-export const useWeb3 = () => {
-    const context = useContext(Web3Context)
-    if (!context) {
-        throw new Error('useWeb3 must be used within a Web3Provider')
-    }
-    return context
+export function useWeb3() {
+  const context = useContext(Web3Context);
+  if (!context) {
+    throw new Error('useWeb3 must be used within Providers');
+  }
+  return context;
 }
+
+// Make sure Providers wraps your app in layout

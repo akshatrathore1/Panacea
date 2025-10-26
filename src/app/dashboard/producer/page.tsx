@@ -84,7 +84,7 @@ export default function ProducerDashboard() {
             title: currentLang === 'en' ? 'List for Sale' : 'बिक्री के लिए सूची',
             description: currentLang === 'en' ? 'Sell your produce' : 'अपना उत्पाद बेचें',
             icon: TagIcon,
-            href: '/dashboard/producer/marketplace',
+            href: '/dashboard/producer/list',
             color: 'bg-orange-500'
         },
         {
@@ -225,7 +225,7 @@ export default function ProducerDashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {/* Quick Actions */}
                     <div className="lg:col-span-2">
                         <h2 className={`text-xl font-semibold mb-4 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
