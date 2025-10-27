@@ -26,7 +26,7 @@ const firstPostBase = seededOn.getTime() - 4 * DAY + 2 * HOUR + 25 * MINUTE
 const secondPostBase = seededOn.getTime() - 8 * DAY + 5 * HOUR + 10 * MINUTE
 
 // In-memory store for dev. Resets when server restarts.
-let posts: Post[] = [
+const posts: Post[] = [
     {
         id: "best-practices-wheat",
         title: "Best practices for wheat storage",
