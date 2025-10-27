@@ -3,15 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWeb3 } from '@/components/Providers';
-import Link from 'next/link';
 import type { Product } from '@/types/product';
-import { ethers } from 'ethers';
 import PageHeader from '@/components/PageHeader';
 import { PlusCircle, Trash2, Wallet } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function ListForSalePage() {
   const router = useRouter();
   const { user, contract, signer, connectWallet, isConnected } = useWeb3();
+  const { i18n } = useTranslation();
+  const lang = (i18n.language as 'en' | 'hi') || 'en';
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
@@ -38,7 +39,7 @@ export default function ListForSalePage() {
       try {
         await connectWallet();
       } catch (err) {
-        alert('Please install MetaMask and connect your wallet');
+        alert(lang === 'en' ? 'Please install MetaMask and connect your wallet' : 'कृपया MetaMask स्थापित करें और अपना वॉलेट कनेक्ट करें');
         return;
       }
     }
@@ -73,14 +74,14 @@ export default function ListForSalePage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown' }));
-        throw new Error(err.error || 'Failed to save product');
+        throw new Error(err.error || (lang === 'en' ? 'Failed to save product' : 'उत्पाद सहेजने में विफल'));
       }
 
       // navigate to marketplace to see listing
       router.push('/dashboard/marketplace');
     } catch (err) {
       console.error('Submit error:', err);
-      alert(err instanceof Error ? err.message : 'Failed to list product');
+      alert(err instanceof Error ? err.message : (lang === 'en' ? 'Failed to list product' : 'उत्पाद सूचीबद्ध करने में विफल'));
     } finally {
       setIsSubmitting(false);
     }
@@ -90,21 +91,21 @@ export default function ListForSalePage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <PageHeader
-        title="List Product for Sale"
+        title={lang === 'en' ? 'List Product for Sale' : 'बिक्री के लिए उत्पाद सूचीबद्ध करें'}
         backHref="/dashboard/producer"
         actions={
           <div className="text-sm">
             {isConnected ? (
               <span className="inline-flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-md">
                 <Wallet className="h-4 w-4" />
-                Wallet: {user?.name || 'Connected'}
+                {lang === 'en' ? 'Wallet' : 'वॉलेट'}: {user?.name || (lang === 'en' ? 'Connected' : 'कनेक्टेड')}
               </span>
             ) : (
               <button
                 onClick={() => connectWallet()}
                 className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                <Wallet className="h-4 w-4" /> Connect Wallet
+                <Wallet className="h-4 w-4" /> {lang === 'en' ? 'Connect Wallet' : 'वॉलेट कनेक्ट करें'}
               </button>
             )}
           </div>
@@ -116,11 +117,11 @@ export default function ListForSalePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Name
+                {lang === 'en' ? 'Product Name' : 'उत्पाद का नाम'}
               </label>
               <input
                 required
-                placeholder="Product name"
+                placeholder={lang === 'en' ? 'Product name' : 'उत्पाद का नाम'}
                 value={productForm.name ?? ''}
                 onChange={(e) => setProductForm(s => ({ ...s, name: e.target.value }))}
                 className="border p-2 rounded"
@@ -129,7 +130,7 @@ export default function ListForSalePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
+                {lang === 'en' ? 'Category' : 'श्रेणी'}
               </label>
               <select
                 value={productForm.category}
@@ -137,24 +138,24 @@ export default function ListForSalePage() {
                 className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
                 required
               >
-                <option value="">Select category</option>
-                <option value="vegetables">Vegetables</option>
-                <option value="fruits">Fruits</option>
-                <option value="grains">Grains</option>
-                <option value="dairy">Dairy</option>
-                <option value="other">Other</option>
+                <option value="">{lang === 'en' ? 'Select category' : 'श्रेणी चुनें'}</option>
+                <option value="vegetables">{lang === 'en' ? 'Vegetables' : 'सब्ज़ियाँ'}</option>
+                <option value="fruits">{lang === 'en' ? 'Fruits' : 'फल'}</option>
+                <option value="grains">{lang === 'en' ? 'Grains' : 'अनाज'}</option>
+                <option value="dairy">{lang === 'en' ? 'Dairy' : 'डेयरी'}</option>
+                <option value="other">{lang === 'en' ? 'Other' : 'अन्य'}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity
+                {lang === 'en' ? 'Quantity' : 'मात्रा'}
               </label>
               <div className="flex gap-2">
                 <input
                   required
                   type="number"
-                  placeholder="Quantity"
+                  placeholder={lang === 'en' ? 'Quantity' : 'मात्रा'}
                   value={productForm.quantity ?? ''}
                   onChange={(e) => setProductForm(s => ({ ...s, quantity: e.target.value === '' ? 0 : Number(e.target.value) }))}
                   className="border p-2 rounded"
@@ -176,12 +177,12 @@ export default function ListForSalePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Price per {productForm.unit}
+                {lang === 'en' ? 'Price per' : 'प्रति'} {productForm.unit}
               </label>
               <input
                 required
                 type="number"
-                placeholder="Price"
+                placeholder={lang === 'en' ? 'Price' : 'कीमत'}
                 value={productForm.price ?? ''}
                 onChange={(e) => setProductForm(s => ({ ...s, price: e.target.value === '' ? 0 : Number(e.target.value) }))}
                 className="border p-2 rounded"
@@ -192,11 +193,11 @@ export default function ListForSalePage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Harvest Date
+                {lang === 'en' ? 'Harvest Date' : 'कटाई की तारीख'}
               </label>
               <input
                 type="date"
-                placeholder="Harvest date"
+                placeholder={lang === 'en' ? 'Harvest date' : 'कटाई की तारीख'}
                 value={productForm.harvestDate ?? ''}
                 onChange={(e) => setProductForm(s => ({ ...s, harvestDate: e.target.value || null }))}
                 className="border p-2 rounded"
@@ -206,10 +207,10 @@ export default function ListForSalePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
+              {lang === 'en' ? 'Description' : 'विवरण'}
             </label>
             <textarea
-              placeholder="Description"
+              placeholder={lang === 'en' ? 'Description' : 'विवरण'}
               value={productForm.description ?? ''}
               onChange={(e) => setProductForm(s => ({ ...s, description: e.target.value }))}
               className="w-full border p-2 rounded"
@@ -231,14 +232,14 @@ export default function ListForSalePage() {
               })}
               className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
             >
-              <Trash2 className="h-4 w-4" /> Clear
+              <Trash2 className="h-4 w-4" /> {lang === 'en' ? 'Clear' : 'साफ़ करें'}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
             >
-              <PlusCircle className="h-4 w-4" /> {isSubmitting ? 'Listing…' : 'List Product'}
+              <PlusCircle className="h-4 w-4" /> {isSubmitting ? (lang === 'en' ? 'Listing…' : 'सूचीबद्ध हो रहा है…') : (lang === 'en' ? 'List Product' : 'उत्पाद सूचीबद्ध करें')}
             </button>
           </div>
         </form>
