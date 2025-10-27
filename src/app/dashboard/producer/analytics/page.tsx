@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import PageHeader from '@/components/PageHeader'
 import { RefreshCcw } from 'lucide-react'
 import type { Product } from '@/types/product'
+import { useTranslation } from 'react-i18next'
 
 const INR = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -23,6 +23,8 @@ type Aggregates = {
 }
 
 export default function ProducerAnalyticsPage() {
+  const { i18n } = useTranslation()
+  const lang = (i18n.language as 'en' | 'hi') || 'en'
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -114,22 +116,26 @@ export default function ProducerAnalyticsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <PageHeader
-        title="Analytics"
+        title={lang === 'en' ? 'Analytics' : 'एनालिटिक्स'}
         backHref="/dashboard/producer"
         actions={
           <button
             onClick={fetchProducts}
             className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
-            <RefreshCcw className="h-4 w-4" /> Refresh
+            <RefreshCcw className="h-4 w-4" /> {lang === 'en' ? 'Refresh' : 'रीफ़्रेश'}
           </button>
         }
       />
 
-      {isLoading && <div className="p-4 bg-white shadow rounded">Loading analytics…</div>}
+      {isLoading && (
+        <div className="p-4 bg-white shadow rounded">
+          {lang === 'en' ? 'Loading analytics…' : 'एनालिटिक्स लोड हो रहा है…'}
+        </div>
+      )}
       {error && (
         <div className="p-4 bg-red-50 text-red-700 shadow rounded">
-          {error}. Make sure GET /api/marketplace/products is implemented.
+          {error}. {lang === 'en' ? 'Make sure GET /api/marketplace/products is implemented.' : 'सुनिश्चित करें कि GET /api/marketplace/products लागू है।'}
         </div>
       )}
 
@@ -137,30 +143,42 @@ export default function ProducerAnalyticsPage() {
         <div className="space-y-8">
           {/* KPI cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <KPI title="Total Listed (Qty)" value={agg.totalListedQty.toLocaleString()} />
-            <KPI title="Total Sold (Qty)" value={agg.totalSoldQty.toLocaleString()} />
-            <KPI title="Potential Revenue" value={INR.format(agg.totalListedRevenue)} />
-            <KPI title="Gross Sales Revenue" value={INR.format(agg.totalSalesRevenue)} />
+            <KPI
+              title={lang === 'en' ? 'Total Listed (Qty)' : 'कुल सूचीबद्ध (मात्रा)'}
+              value={agg.totalListedQty.toLocaleString()}
+            />
+            <KPI
+              title={lang === 'en' ? 'Total Sold (Qty)' : 'कुल बिक्री (मात्रा)'}
+              value={agg.totalSoldQty.toLocaleString()}
+            />
+            <KPI
+              title={lang === 'en' ? 'Potential Revenue' : 'संभावित राजस्व'}
+              value={INR.format(agg.totalListedRevenue)}
+            />
+            <KPI
+              title={lang === 'en' ? 'Gross Sales Revenue' : 'सकल बिक्री राजस्व'}
+              value={INR.format(agg.totalSalesRevenue)}
+            />
           </div>
 
           {/* Category breakdown */}
           <section className="bg-white rounded shadow p-4">
-            <h2 className="text-lg font-semibold mb-3">By Category</h2>
+            <h2 className="text-lg font-semibold mb-3 {lang === 'hi' ? 'font-hindi' : ''}">{lang === 'en' ? 'By Category' : 'श्रेणी के अनुसार'}</h2>
             <div className="space-y-2">
               {Object.keys(agg.byCategory).length === 0 && (
-                <div className="text-gray-500 text-sm">No data yet.</div>
+                <div className="text-gray-500 text-sm">{lang === 'en' ? 'No data yet.' : 'अभी कोई डेटा नहीं।'}</div>
               )}
               {Object.entries(agg.byCategory).map(([cat, v]) => (
                 <div key={cat} className="flex items-center justify-between border-b last:border-b-0 py-2">
                   <div className="font-medium">{cat}</div>
                   <div className="text-sm text-gray-600">
-                    Listed: {v.listedQty.toLocaleString()} • Sold: {v.soldQty.toLocaleString()} • Revenue: {INR.format(v.salesRevenue)}
+                    {lang === 'en' ? 'Listed' : 'सूचीबद्ध'}: {v.listedQty.toLocaleString()} • {lang === 'en' ? 'Sold' : 'बिक्री'}: {v.soldQty.toLocaleString()} • {lang === 'en' ? 'Revenue' : 'राजस्व'}: {INR.format(v.salesRevenue)}
                   </div>
                 </div>
               ))}
               {agg.bestCategory && (
                 <div className="mt-2 text-sm text-green-700">
-                  Best performing category: <span className="font-medium">{agg.bestCategory}</span>
+                  {lang === 'en' ? 'Best performing category' : 'सबसे बेहतर श्रेणी'}: <span className="font-medium">{agg.bestCategory}</span>
                 </div>
               )}
             </div>
@@ -168,20 +186,21 @@ export default function ProducerAnalyticsPage() {
 
           {/* Sales/listings over time */}
           <section className="bg-white rounded shadow p-4">
-            <h2 className="text-lg font-semibold mb-3">Over Time</h2>
+            <h2 className="text-lg font-semibold mb-3">{lang === 'en' ? 'Over Time' : 'समय के साथ'}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 className="font-medium mb-2">Listed Qty per Day</h3>
+                <h3 className="font-medium mb-2">{lang === 'en' ? 'Listed Qty per Day' : 'प्रति दिन सूचीबद्ध मात्रा'}</h3>
                 <MiniBars data={agg.byDay.map(d => ({ label: d.date, value: d.listedQty }))} />
               </div>
               <div>
-                <h3 className="font-medium mb-2">Sold Qty per Day</h3>
+                <h3 className="font-medium mb-2">{lang === 'en' ? 'Sold Qty per Day' : 'प्रति दिन बिक्री मात्रा'}</h3>
                 <MiniBars data={agg.byDay.map(d => ({ label: d.date, value: d.soldQty }))} />
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Note: Sold quantities depend on product.status === &apos;sold&apos;. If you do not record sales yet,
-              this will appear as zero.
+              {lang === 'en'
+                ? "Note: Sold quantities depend on product.status === 'sold'. If you do not record sales yet, this will appear as zero."
+                : "नोट: बेची गई मात्रा product.status === 'sold' पर निर्भर करती है। यदि आपने अभी तक बिक्री दर्ज नहीं की है, तो यह शून्य के रूप में दिखाई देगा।"}
             </p>
           </section>
         </div>
