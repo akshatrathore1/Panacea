@@ -18,6 +18,7 @@ import {
     DocumentTextIcon,
     PhotoIcon
 } from '@heroicons/react/24/outline'
+import { formatNumber } from '@/lib/format'
 
 export default function TracePage() {
     const params = useParams()
@@ -333,7 +334,7 @@ export default function TracePage() {
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-semibold text-green-600">
-                                                                ₹{(transaction.amount / 100).toLocaleString()}
+                                                                ₹{formatNumber(transaction.amount / 100)}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
                                                                 ₹{(transaction.amount / 100 / batchData.weight).toFixed(2)}/kg

@@ -28,6 +28,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(null)
     const [isConnected, setIsConnected] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    // Tracks whether the wallet was connected as a result of an explicit user action
+    // (clicking Connect). We avoid using the signer automatically if accounts were
+    // merely detected on page load to prevent any MetaMask prompts.
+    const [walletExplicitlyConnected, setWalletExplicitlyConnected] = useState(false)
 
     const persistUser = (profile: UserProfile) => {
         setUser(profile)
@@ -47,7 +51,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
             try {
                 const parsed = JSON.parse(savedUser)
                 setUser(parsed)
-                setIsConnected(true)
+                // Do NOT mark wallet as connected when loading a persisted user.
+                // A persisted user represents an authenticated session (phone-based)
+                // but does not imply MetaMask is connected. Keep isConnected false
+                // so the UI shows connect / skip options in registration/login flows.
+                setIsConnected(false)
             } catch (err) {
                 console.error('Failed to parse saved user:', err)
                 localStorage.removeItem('krishialok_user')
@@ -57,7 +65,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined' && window.ethereum) {
             const web3Provider = new ethers.BrowserProvider(window.ethereum)
             setProvider(web3Provider)
-            web3Provider.getSigner().then(setSigner).catch(() => {})
+
+            // Check for already-authorized accounts without prompting the user.
+            // `listAccounts()` uses the eth_accounts RPC which does not open a MetaMask popup.
+            // Only create and store a signer if accounts are already authorized.
+            web3Provider.listAccounts().then((accounts) => {
+                if (accounts && accounts.length > 0) {
+                    web3Provider.getSigner().then((s) => {
+                        setSigner(s)
+                        setIsConnected(true)
+                    }).catch(() => {})
+                }
+            }).catch(() => {
+                // ignore errors — do not trigger any wallet prompt
+            })
         }
     }, [])
 
@@ -69,6 +90,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
         try {
             setIsLoading(true)
+
+            if (typeof window === 'undefined' || !window.ethereum) {
+                console.error('No Ethereum provider found (window.ethereum is undefined)')
+                return null
+            }
+
             await window.ethereum.request({ method: 'eth_requestAccounts' })
 
             const web3Provider = new ethers.BrowserProvider(window.ethereum)
@@ -78,6 +105,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             setProvider(web3Provider)
             setSigner(web3Signer)
             setIsConnected(true)
+            setWalletExplicitlyConnected(true)
 
             try {
                 const response = await fetch(`/api/users?address=${walletAddress}`)
@@ -86,8 +114,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     persistUser(profile)
                     return web3Signer
                 }
-            } catch (error) {
-                console.error('Failed to load user profile from API:', error)
+            } catch (fetchErr) {
+                console.error('Failed to load user profile from API:', fetchErr)
             }
 
             const savedUser = localStorage.getItem('krishialok_user')
@@ -104,8 +132,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
             }
 
             return web3Signer
-        } catch (error) {
-            console.error('Failed to connect wallet:', error)
+        } catch (error: any) {
+            // Improve error logging so the console shows a helpful message and details
+            try {
+                const details = error && error.message ? error.message : JSON.stringify(error)
+                console.error('Failed to connect wallet:', details, error)
+            } catch (logErr) {
+                console.error('Failed to connect wallet (unable to stringify error):', error)
+            }
             return null
         } finally {
             setIsLoading(false)
@@ -127,7 +161,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         let address: string | null = null
         let activeSigner = signer
 
-        if (activeSigner) {
+        // Only attempt to use the signer if the wallet was explicitly connected
+        // by the user in this session. This avoids triggering provider prompts
+        // when a persisted user or detected accounts exist.
+        if (walletExplicitlyConnected && activeSigner) {
             try {
                 address = (await activeSigner.getAddress()).toLowerCase()
             } catch (err) {

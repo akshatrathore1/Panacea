@@ -1,4 +1,4 @@
-'use client'
+"use client"
 import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,9 +11,11 @@ import {
     ClockIcon,
     ArrowTrendingUpIcon,
     DocumentCheckIcon,
+    TagIcon,
     MapPinIcon,
     PhoneIcon
 } from '@heroicons/react/24/outline'
+import { formatNumber } from '@/lib/format'
 
 export default function IntermediaryDashboard() {
     const { t, i18n } = useTranslation()
@@ -140,12 +142,7 @@ export default function IntermediaryDashboard() {
                         >
                             <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                         </button>
-                        <Link
-                            href="/marketplace"
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center space-x-2"
-                        >
-                            {t('marketplace')}
-                        </Link>
+                        {/* Marketplace link removed from header; shown as a quick-action card in the sidebar below */}
                     </div>
                 </div>
             </header>
@@ -187,7 +184,7 @@ export default function IntermediaryDashboard() {
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Monthly Revenue' : 'मासिक राजस्व'}
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">₹{stats.monthlyRevenue.toLocaleString()}</p>
+                                <p className="text-2xl font-bold text-gray-900">₹{formatNumber(stats.monthlyRevenue)}</p>
                             </div>
                             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <CurrencyRupeeIcon className="w-6 h-6 text-blue-600" />
@@ -236,7 +233,7 @@ export default function IntermediaryDashboard() {
                                                 </p>
                                                 <p className="text-sm text-gray-600">
                                                     {currentLang === 'en' ? 'Quantity:' : 'मात्रा:'} {order.quantity} |
-                                                    {currentLang === 'en' ? ' Value:' : ' मूल्य:'} ₹{order.value.toLocaleString()}
+                                                    {currentLang === 'en' ? ' Value:' : ' मूल्य:'} ₹{formatNumber(order.value)}
                                                 </p>
                                             </div>
                                         </div>
@@ -321,7 +318,7 @@ export default function IntermediaryDashboard() {
                                                 <p className="text-sm text-gray-500">{delivery.completedDate}</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-sm font-medium text-gray-900">₹{delivery.value.toLocaleString()}</p>
+                                                <p className="text-sm font-medium text-gray-900">₹{formatNumber(delivery.value)}</p>
                                                 <div className="flex items-center text-xs text-yellow-600">
                                                     <span>★ {delivery.rating}</span>
                                                 </div>
@@ -340,6 +337,18 @@ export default function IntermediaryDashboard() {
                                 </h3>
                             </div>
                             <div className="p-6 space-y-3">
+                                <a href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                                    <div className="flex items-start space-x-3">
+                                        <div className="p-2 rounded-lg bg-orange-100">
+                                            <TagIcon className="w-5 h-5 text-orange-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}</h4>
+                                            <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Browse products & listings' : 'उत्पाद और सूची ब्राउज़ करें'}</p>
+                                        </div>
+                                    </div>
+                                </a>
+
                                 <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     <TruckIcon className="w-5 h-5" />
                                     <span>{currentLang === 'en' ? 'Track Vehicles' : 'वाहन ट्रैक करें'}</span>
@@ -347,10 +356,6 @@ export default function IntermediaryDashboard() {
                                 <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     <DocumentCheckIcon className="w-5 h-5" />
                                     <span>{currentLang === 'en' ? 'Quality Reports' : 'गुणवत्ता रिपोर्ट'}</span>
-                                </button>
-                                <button className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <ArrowTrendingUpIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'View Analytics' : 'एनालिटिक्स देखें'}</span>
                                 </button>
                             </div>
                         </div>

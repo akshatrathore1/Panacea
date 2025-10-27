@@ -11,7 +11,6 @@ const ROLE_OPTIONS: UserRole[] = ['producer', 'intermediary', 'retailer', 'consu
 import {
     UserIcon,
     PhoneIcon,
-    MapPinIcon,
     IdentificationIcon,
     WalletIcon,
     ArrowLeftIcon
@@ -29,11 +28,11 @@ function RegisterContent() {
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
-        location: '',
         aadhaar: ''
     })
     const [otpSent, setOtpSent] = useState(false)
     const [otp, setOtp] = useState('')
+    const [processingSkip, setProcessingSkip] = useState(false)
 
     useEffect(() => {
         const roleParam = searchParams.get('role')
@@ -43,11 +42,15 @@ function RegisterContent() {
         }
     }, [searchParams])
 
+    // If role changes to consumer, ensure we don't show step 3
     useEffect(() => {
-        if (user) {
-            router.push(`/dashboard/${user.role}`)
+        if (selectedRole === 'consumer' && step > 2) {
+            setStep(2)
         }
-    }, [user, router])
+    }, [selectedRole])
+
+    // NOTE: removed automatic redirect on mount. Registration flow will redirect
+    // only after an explicit action (successful register + wallet connect / skip).
 
     const roles: Array<{
         id: UserRole
@@ -130,8 +133,7 @@ function RegisterContent() {
                     const saved = await registerUser({
                         role: selectedRole as UserRole,
                         name: formData.name,
-                        phone: formData.phone,
-                        location: formData.location
+                        phone: formData.phone
                     })
                     console.log('Registered consumer, saved profile:', saved)
                     // Ensure context/localStorage is set (registerUser persists, but call setLocalUser to be explicit)
@@ -162,12 +164,21 @@ function RegisterContent() {
     const handleWalletConnect = async () => {
         try {
             const signer = await connectWallet()
-            if (signer && formData.name && selectedRole) {
+            // Validate required fields (role, name, phone) before calling register API
+            if (!selectedRole) {
+                alert(currentLang === 'en' ? 'Please select a role first' : 'कृपया पहले एक भूमिका चुनें')
+                return
+            }
+            if (!formData.name || !formData.phone) {
+                alert(currentLang === 'en' ? 'Please fill name and phone before connecting wallet' : 'कृपया वॉलेट कनेक्ट करने से पहले नाम और फोन भरें')
+                return
+            }
+
+            if (signer) {
                 await registerUser({
                     role: selectedRole,
                     name: formData.name,
-                    phone: formData.phone,
-                    location: formData.location
+                    phone: formData.phone
                 })
             }
         } catch (error) {
@@ -204,31 +215,42 @@ function RegisterContent() {
             </header>
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Progress Bar */}
+                {/* Progress Bar - show 2 steps for consumers, 3 for other roles */}
                 <div className="mb-8">
-                    <div className="flex items-center justify-center space-x-4">
-                        {[1, 2, 3].map((stepNum) => (
-                            <div key={stepNum} className="flex items-center">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNum
-                                    ? 'bg-orange-500 text-white'
-                                    : 'bg-gray-200 text-gray-500'
-                                    }`}>
-                                    {stepNum}
+                    {/** determine whether the selected role is consumer **/}
+                    {/** showSteps contains the sequence of step numbers to render **/}
+                    {(() => {
+                        const isConsumer = selectedRole === 'consumer'
+                        const showSteps = isConsumer ? [1, 2] : [1, 2, 3]
+
+                        return (
+                            <>
+                                <div className="flex items-center justify-center space-x-4">
+                                    {showSteps.map((stepNum, idx) => (
+                                        <div key={stepNum} className="flex items-center">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNum
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-gray-200 text-gray-500'
+                                                }`}>
+                                                {stepNum}
+                                            </div>
+                                            {idx < showSteps.length - 1 && (
+                                                <div className={`w-12 h-1 mx-2 ${step > stepNum ? 'bg-orange-500' : 'bg-gray-200'}`} />
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
-                                {stepNum < 3 && (
-                                    <div className={`w-12 h-1 mx-2 ${step > stepNum ? 'bg-orange-500' : 'bg-gray-200'
-                                        }`} />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="text-center mt-4">
-                        <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                            {step === 1 && (currentLang === 'en' ? 'Choose Your Role' : 'अपनी भूमिका चुनें')}
-                            {step === 2 && (currentLang === 'en' ? 'Personal Details' : 'व्यक्तिगत विवरण')}
-                            {step === 3 && (currentLang === 'en' ? 'Connect Wallet' : 'वॉलेट कनेक्ट करें')}
-                        </p>
-                    </div>
+
+                                <div className="text-center mt-4">
+                                    <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        {step === 1 && (currentLang === 'en' ? 'Choose Your Role' : 'अपनी भूमिका चुनें')}
+                                        {step === 2 && (currentLang === 'en' ? 'Personal Details' : 'व्यक्तिगत विवरण')}
+                                        {!isConsumer && step === 3 && (currentLang === 'en' ? 'Connect Wallet' : 'वॉलेट कनेक्ट करें')}
+                                    </p>
+                                </div>
+                            </>
+                        )
+                    })()}
                 </div>
 
                 {/* Step 1: Role Selection */}
@@ -328,6 +350,8 @@ function RegisterContent() {
                                     </div>
                                 </div>
 
+                                {/* Location field removed by user request; server accepts missing location */}
+
                                 <div>
                                     <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Aadhaar Number' : 'आधार संख्या'}
@@ -397,64 +421,94 @@ function RegisterContent() {
 
                             {!isConnected ? (
                                 <>
-                                    <button
-                                        onClick={handleWalletConnect}
-                                        disabled={isLoading}
-                                        className={`bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-lg font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        {isLoading ? (
-                                            <span className="loading-dots">
-                                                {currentLang === 'en' ? 'Connecting' : 'कनेक्ट हो रहा है'}
-                                            </span>
-                                        ) : (
-                                            currentLang === 'en' ? 'Connect MetaMask' : 'MetaMask कनेक्ट करें'
-                                        )}
-                                    </button>
+                                    {processingSkip ? (
+                                        <div className="py-8">
+                                            <div className="text-center text-gray-700">
+                                                <div className="inline-block w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full animate-spin mb-3" />
+                                                <div className="font-medium">{currentLang === 'en' ? 'Processing...' : 'प्रसंस्करण...'}</div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className={processingSkip ? 'pointer-events-none' : ''}>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); handleWalletConnect() }}
+                                                    disabled={isLoading}
+                                                    className={`bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-lg font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                >
+                                                {isLoading ? (
+                                                    <span className="loading-dots">
+                                                        {currentLang === 'en' ? 'Connecting' : 'कनेक्ट हो रहा है'}
+                                                    </span>
+                                                ) : (
+                                                    currentLang === 'en' ? 'Connect MetaMask' : 'MetaMask कनेक्ट करें'
+                                                )}
+                                            </button>
 
-                                    {/* Allow skipping wallet connection — registration will still proceed using phone-derived id */}
-                                    <div className="mt-4">
-                                        <button
-                                            onClick={async () => {
-                                                if (!selectedRole) {
-                                                    alert(currentLang === 'en' ? 'Please select a role first' : 'कृपया पहले एक भूमिका चुनें')
-                                                    return
-                                                }
+                                            </div>
+                                            {/* Allow skipping wallet connection — registration will still proceed using phone-derived id */}
+                                            <div className="mt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={async (e) => {
+                                                        e.preventDefault()
+                                                        // prevent double activation
+                                                        if (processingSkip || isLoading) return
+                                                        setProcessingSkip(true)
 
-                                                try {
-                                                    const saved = await registerUser({
-                                                        role: selectedRole as UserRole,
-                                                        name: formData.name,
-                                                        phone: formData.phone,
-                                                        location: formData.location
-                                                    })
-                                                    // Use role returned by server (saved profile) to redirect reliably
-                                                    console.log('Registered (skip) saved profile:', saved)
-                                                    await router.replace(`/dashboard/${saved.role}`)
-                                                } catch (err) {
-                                                    console.error('Registration skipped wallet error:', err)
-                                                    alert(currentLang === 'en' ? 'Registration failed' : 'पंजीकरण विफल')
-                                                }
-                                            }}
-                                            className="text-sm text-gray-600 underline"
-                                            disabled={isLoading}
-                                        >
-                                            {currentLang === 'en' ? 'Skip & continue without wallet' : 'वॉलेट के बिना छोड़ें और जारी रखें'}
-                                        </button>
-                                    </div>
+                                                        if (!selectedRole) {
+                                                            alert(currentLang === 'en' ? 'Please select a role first' : 'कृपया पहले एक भूमिका चुनें')
+                                                            setProcessingSkip(false)
+                                                            return
+                                                        }
 
-                                    <div className={`mt-6 text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {currentLang === 'en'
-                                            ? "Don't have MetaMask? "
-                                            : "MetaMask नहीं है? "}
-                                        <a
-                                            href="https://metamask.io/download/"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-orange-600 hover:underline"
-                                        >
-                                            {currentLang === 'en' ? 'Download here' : 'यहाँ डाउनलोड करें'}
-                                        </a>
-                                    </div>
+                                                        if (!formData.name || !formData.phone) {
+                                                            alert(currentLang === 'en' ? 'Please fill name and phone before continuing' : 'कृपया जारी रखने से पहले नाम और फोन भरें')
+                                                            setProcessingSkip(false)
+                                                            return
+                                                        }
+
+                                                        try {
+                                                            const saved = await registerUser({
+                                                                role: selectedRole as UserRole,
+                                                                name: formData.name,
+                                                                phone: formData.phone
+                                                            })
+                                                            // Use role returned by server (saved profile) to redirect reliably
+                                                            console.log('Registered (skip) saved profile:', saved)
+                                                            // ensure local context updated
+                                                            try { setLocalUser(saved) } catch (e) {}
+                                                            await router.replace(`/dashboard/${saved.role}`)
+                                                        } catch (err) {
+                                                            console.error('Registration skipped wallet error:', err)
+                                                            alert(currentLang === 'en' ? 'Registration failed' : 'पंजीकरण विफल')
+                                                        } finally {
+                                                            setProcessingSkip(false)
+                                                        }
+                                                    }}
+                                                    className="text-sm text-gray-600 underline"
+                                                    disabled={isLoading || processingSkip}
+                                                >
+                                                    {currentLang === 'en' ? 'Skip & continue without wallet' : 'वॉलेट के बिना छोड़ें और जारी रखें'}
+                                                </button>
+                                            </div>
+
+                                            <div className={`mt-6 text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en'
+                                                    ? "Don't have MetaMask? "
+                                                    : "MetaMask नहीं है? "}
+                                                <a
+                                                    href="https://metamask.io/download/"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-orange-600 hover:underline"
+                                                >
+                                                    {currentLang === 'en' ? 'Download here' : 'यहाँ डाउनलोड करें'}
+                                                </a>
+                                            </div>
+                                        </>
+                                    )}
                                 </>
                             ) : (
                                 <div className="text-green-600">

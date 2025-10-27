@@ -5,7 +5,7 @@ export interface UserProfile {
     role: UserRole
     name: string
     phone: string
-    location: string
+    location?: string
     verified: boolean
     createdAt?: string
     updatedAt?: string
@@ -16,6 +16,6 @@ export interface UserRegistrationPayload {
     role: UserRole
     name: string
     phone: string
-    location: string
+    location?: string
     verified?: boolean
 }

@@ -88,10 +88,10 @@ export default function ProducerDashboard() {
             color: 'bg-blue-500'
         },
         {
-            title: currentLang === 'en' ? 'List for Sale' : 'बिक्री के लिए सूची',
-            description: currentLang === 'en' ? 'Sell your produce' : 'अपना उत्पाद बेचें',
+            title: currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस',
+            description: currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें',
             icon: TagIcon,
-            href: '/dashboard/producer/marketplace',
+            href: '/marketplace',
             color: 'bg-orange-500'
         },
         {
@@ -157,12 +157,7 @@ export default function ProducerDashboard() {
                                 <GlobeAltIcon className="w-5 h-5" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
-                            <Link
-                            href="/marketplace"
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-4 rounded-lg font-semibold text-sm transition-colors flex items-center"
-                        >
-                            {t('marketplace')}
-                        </Link>
+                            {/* Marketplace moved to Quick Actions as a card */}
                         </div>
                     </div>
                 </div>

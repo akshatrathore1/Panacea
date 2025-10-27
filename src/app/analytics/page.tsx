@@ -14,6 +14,7 @@ import {
     MapPinIcon,
     ClockIcon
 } from '@heroicons/react/24/outline'
+import { formatNumber } from '@/lib/format'
 
 export default function AnalyticsPage() {
     const { t, i18n } = useTranslation()
@@ -114,7 +115,7 @@ export default function AnalyticsPage() {
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Total Transactions' : 'कुल लेनदेन'}
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">{overallStats.totalTransactions.toLocaleString()}</p>
+                                <p className="text-2xl font-bold text-gray-900">{formatNumber(overallStats.totalTransactions)}</p>
                                 <p className="text-sm text-green-600 flex items-center mt-1">
                                     <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
                                     +12.5%

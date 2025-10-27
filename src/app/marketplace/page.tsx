@@ -16,6 +16,7 @@ import {
     ChatBubbleLeftRightIcon,
     HeartIcon
 } from '@heroicons/react/24/outline'
+import { formatNumber } from '@/lib/format'
 
 export default function MarketplacePage() {
     const { t, i18n } = useTranslation()
@@ -305,11 +306,11 @@ export default function MarketplacePage() {
                                 <div className="border-t pt-4">
                                     <div className="flex justify-between items-center mb-3">
                                         <div>
-                                            <p className="text-2xl font-bold text-green-600">₹{listing.pricePerKg.toLocaleString()}</p>
+                                            <p className="text-2xl font-bold text-green-600">₹{formatNumber(listing.pricePerKg)}</p>
                                             <p className="text-sm text-gray-500">per kg</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-semibold">₹{(listing.totalPrice / 100).toLocaleString()}</p>
+                                            <p className="font-semibold">₹{formatNumber(listing.totalPrice / 100)}</p>
                                             <p className="text-sm text-gray-500">{currentLang === 'en' ? 'Total' : 'कुल'}</p>
                                         </div>
                                     </div>

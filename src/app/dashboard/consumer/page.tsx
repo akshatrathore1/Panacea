@@ -272,12 +272,7 @@ export default function ConsumerDashboard() {
                                     <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Recent Purchases' : 'हाल की खरीदारी'}
                                     </h2>
-                                    <Link
-                                        href="/marketplace"
-                                        className={`bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                    >
-                                        {currentLang === 'en' ? 'Shop Now' : 'अभी खरीदें'}
-                                    </Link>
+                                    {/* Removed header button; Marketplace is now available as a quick-action card in the sidebar */}
                                 </div>
                             </div>
                             <div className="divide-y divide-gray-200">
@@ -428,22 +423,17 @@ export default function ConsumerDashboard() {
                                 </h3>
                             </div>
                             <div className="p-6 space-y-3">
-                                <Link
-                                    href="/marketplace"
-                                    className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                >
-                                    <MagnifyingGlassIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Browse Products' : 'उत्पाद ब्राउज़ करें'}</span>
-                                </Link>
-                                <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <QrCodeIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Scan QR Code' : 'QR कोड स्कैन करें'}</span>
-                                </button>
-                                <button className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Find Local Stores' : 'स्थानीय स्टोर खोजें'}</span>
-                                </button>
-                            </div>
+                                    {/* Marketplace removed for consumer role — consumers do not have access */}
+
+                                    <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        <QrCodeIcon className="w-5 h-5" />
+                                        <span>{currentLang === 'en' ? 'Scan QR Code' : 'QR कोड स्कैन करें'}</span>
+                                    </button>
+                                    <button className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                                        <span>{currentLang === 'en' ? 'Find Local Stores' : 'स्थानीय स्टोर खोजें'}</span>
+                                    </button>
+                                </div>
                         </div>
                     </div>
                 </div>

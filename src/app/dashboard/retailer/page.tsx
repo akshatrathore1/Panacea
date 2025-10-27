@@ -16,6 +16,7 @@ import {
     CheckCircleIcon,
     EyeIcon
 } from '@heroicons/react/24/outline'
+import { formatNumber } from '@/lib/format'
 import Link from 'next/link'
 
 export default function RetailerDashboard() {
@@ -193,7 +194,7 @@ export default function RetailerDashboard() {
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? "Today's Sales" : 'आज की बिक्री'}
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">₹{stats.todaySales.toLocaleString()}</p>
+                                <p className="text-2xl font-bold text-gray-900">₹{formatNumber(stats.todaySales)}</p>
                             </div>
                             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                                 <CurrencyRupeeIcon className="w-6 h-6 text-green-600" />
@@ -239,12 +240,7 @@ export default function RetailerDashboard() {
                                     <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Current Inventory' : 'वर्तमान इन्वेंटरी'}
                                     </h2>
-                                    <Link
-                                        href="/marketplace"
-                                        className={`bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                    >
-                                        {currentLang === 'en' ? 'Browse Products' : 'उत्पाद ब्राउज़ करें'}
-                                    </Link>
+                                    {/* Header marketplace button removed; marketplace shown as quick-action card in sidebar */}
                                 </div>
                             </div>
                             <div className="divide-y divide-gray-200">
@@ -403,19 +399,27 @@ export default function RetailerDashboard() {
                                 </h3>
                             </div>
                             <div className="p-6 space-y-3">
-                                <button className={`w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <ChartBarIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Sales Analytics' : 'बिक्री एनालिटिक्स'}</span>
-                                </button>
-                                <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <TruckIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Track Deliveries' : 'डिलीवरी ट्रैक करें'}</span>
-                                </button>
-                                <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <UsersIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Customer Management' : 'ग्राहक प्रबंधन'}</span>
-                                </button>
-                            </div>
+                                    <a href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                                        <div className="flex items-start space-x-3">
+                                            <div className="p-2 rounded-lg bg-purple-50">
+                                                <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}</h4>
+                                                <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Browse products from suppliers' : 'आपूर्तिकर्ताओं से उत्पाद ब्राउज़ करें'}</p>
+                                            </div>
+                                        </div>
+                                    </a>
+
+                                    <button className={`w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        <ChartBarIcon className="w-5 h-5" />
+                                        <span>{currentLang === 'en' ? 'Sales Analytics' : 'बिक्री एनालिटिक्स'}</span>
+                                    </button>
+                                    <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        <TruckIcon className="w-5 h-5" />
+                                        <span>{currentLang === 'en' ? 'Track Deliveries' : 'डिलीवरी ट्रैक करें'}</span>
+                                    </button>
+                                </div>
                         </div>
                     </div>
                 </div>

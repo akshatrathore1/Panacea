@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -25,11 +25,8 @@ export default function LoginPage() {
     const [otpSent, setOtpSent] = useState(false)
     
 
-    useEffect(() => {
-        if (isConnected && user) {
-            router.push(`/dashboard/${user.role}`)
-        }
-    }, [isConnected, user, router])
+    // NOTE: removed automatic redirect on mount. Users must explicitly log in
+    // (wallet connect or phone OTP) before being redirected to the dashboard.
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'

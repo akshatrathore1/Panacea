@@ -63,8 +63,9 @@ export async function POST(request: NextRequest) {
         const body = (await request.json()) as Partial<UserRegistrationPayload>
 
         // Allow missing address for users who don't have a wallet (e.g., consumers).
-        if (!body.role || !body.name || !body.phone || !body.location) {
-            return NextResponse.json({ error: 'role, name, phone, and location are required' }, { status: 400 })
+        // Make `location` optional on the API side — default to empty string when absent.
+        if (!body.role || !body.name || !body.phone) {
+            return NextResponse.json({ error: 'role, name, and phone are required' }, { status: 400 })
         }
 
         let inputAddress = body.address
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
             role: body.role,
             name: body.name,
             phone: body.phone,
-            location: body.location,
+            // default missing location to empty string for backward compatibility
+            location: body.location || '',
             verified: Boolean(body.verified),
             updatedAt: now,
             createdAt: existing.exists ? existing.data()?.createdAt ?? now : now
