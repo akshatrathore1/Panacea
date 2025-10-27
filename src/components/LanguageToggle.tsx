@@ -6,6 +6,7 @@ import i18n from "@/lib/i18n";
 
 export default function LanguageToggle() {
   const [lang, setLang] = useState<string>(i18n.language || "en");
+  const [hidden, setHidden] = useState<boolean>(false);
 
   useEffect(() => {
     try {
@@ -17,6 +18,17 @@ export default function LanguageToggle() {
       setLang(initial);
       if (typeof document !== "undefined") {
         document.documentElement.setAttribute("lang", initial);
+      }
+      // Auto-hide if a page renders its own language toggle
+      if (typeof document !== "undefined") {
+        const check = () => {
+          const hasLocal = document.querySelector('[data-local-language-toggle]');
+          setHidden(Boolean(hasLocal));
+        };
+        check();
+        const observer = new MutationObserver(() => check());
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
       }
     } catch {}
   }, []);
@@ -32,6 +44,8 @@ export default function LanguageToggle() {
   };
 
   const targetLabel = lang === "en" ? "हिंदी" : "English";
+
+  if (hidden) return null;
 
   return (
     <button
