@@ -75,7 +75,7 @@ export default function ListForSalePage() {
       }
 
       // navigate to marketplace to see listing
-      router.push('/marketplace');
+      router.push('/dashboard/marketplace');
     } catch (err) {
       console.error('Submit error:', err);
       alert(err instanceof Error ? err.message : 'Failed to list product');
