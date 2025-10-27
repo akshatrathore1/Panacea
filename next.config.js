@@ -27,6 +27,12 @@ const nextConfig = {
         maxInactiveAge: 25 * 1000,
         pagesBufferLength: 2,
     },
+    // Remove or update any redirects that might be sending /sales to /marketplace
+    async redirects() {
+        return [
+            // Make sure there are no redirects from /dashboard/producer/sales to marketplace
+        ]
+    }
 }
 
 export default nextConfig;
