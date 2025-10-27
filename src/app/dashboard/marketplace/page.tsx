@@ -19,7 +19,7 @@ import {
 
 export default function MarketplacePage() {
     const { t, i18n } = useTranslation()
-    const [currentLang, setCurrentLang] = useState('en')
+    const currentLang = i18n.language || 'en'
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCrop, setSelectedCrop] = useState('')
     const [selectedLocation, setSelectedLocation] = useState('')
@@ -28,7 +28,6 @@ export default function MarketplacePage() {
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
         i18n.changeLanguage(newLang)
     }
 

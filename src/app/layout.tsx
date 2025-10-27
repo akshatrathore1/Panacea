@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Providers } from '@/components/Providers'
+import LanguageToggle from '@/components/LanguageToggle'
 
 export const metadata: Metadata = {
     title: 'कृषिआलोक | KrashiAalok - Blockchain Agricultural Supply Chain',
@@ -29,6 +30,8 @@ export default function RootLayout({
             <body className="min-h-screen bg-gradient-to-br from-orange-50 to-green-50">
                 <Providers>
                     {children}
+                    {/* Global language toggle visible on all pages */}
+                    <LanguageToggle />
                 </Providers>
             </body>
         </html>
