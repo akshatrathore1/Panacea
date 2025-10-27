@@ -20,7 +20,7 @@ export default function LoginPage() {
     const router = useRouter()
     const { connectWallet, isConnected, user, isLoading } = useWeb3()
 
-    const [currentLang, setCurrentLang] = useState('en')
+    const currentLang = i18n.language || 'en'
     const [loginMethod, setLoginMethod] = useState<'wallet' | 'phone'>('wallet')
     const [phoneNumber, setPhoneNumber] = useState('')
     const [password, setPassword] = useState('')
@@ -37,8 +37,8 @@ export default function LoginPage() {
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
         i18n.changeLanguage(newLang)
+        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch {}
     }
 
     const handleWalletLogin = async () => {
@@ -88,6 +88,7 @@ export default function LoginPage() {
                         <button
                             onClick={toggleLanguage}
                             className="flex items-center space-x-1 bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
+                            data-local-language-toggle
                         >
                             <GlobeAltIcon className="w-4 h-4" />
                             <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
