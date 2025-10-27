@@ -2,6 +2,8 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
+import PageHeader from '@/components/PageHeader';
+import { Download, PlusCircle } from 'lucide-react';
 
 export type OwnerType = 'Farmer' | 'Distributor' | 'Retailer' | 'Consumer' | 'Government';
 
@@ -120,25 +122,23 @@ export default function InventoryPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/producer" className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 text-sm">
-            ← Back
-          </Link>
-          <h1 className="text-2xl font-semibold">Inventory</h1>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowAdd((s) => !s)}
-            className="bg-green-600 text-white px-3 py-2 rounded"
-          >
-            {showAdd ? 'Close' : 'Add Item'}
-          </button>
-          <button onClick={exportCSV} className="bg-gray-800 text-white px-3 py-2 rounded">
-            Export CSV
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Inventory"
+        backHref="/dashboard/producer"
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAdd((s) => !s)}
+              className="inline-flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+            >
+              <PlusCircle className="h-4 w-4" /> {showAdd ? 'Close' : 'Add Item'}
+            </button>
+            <button onClick={exportCSV} className="inline-flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded hover:bg-gray-900">
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          </div>
+        }
+      />
 
       {showAdd && (
         <div className="mb-6 bg-white p-4 rounded shadow">
@@ -187,8 +187,8 @@ export default function InventoryPage() {
             />
           </div>
           <div className="mt-3 flex gap-2">
-            <button onClick={addItem} className="bg-blue-600 text-white px-3 py-2 rounded">Save</button>
-            <button onClick={() => setShowAdd(false)} className="px-3 py-2 border rounded">Cancel</button>
+            <button onClick={addItem} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">Save</button>
+            <button onClick={() => setShowAdd(false)} className="px-3 py-2 border rounded hover:bg-gray-50">Cancel</button>
           </div>
         </div>
       )}

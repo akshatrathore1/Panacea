@@ -6,6 +6,8 @@ import { useWeb3 } from '@/components/Providers';
 import Link from 'next/link';
 import type { Product } from '@/types/product';
 import { ethers } from 'ethers';
+import PageHeader from '@/components/PageHeader';
+import { PlusCircle, Trash2, Wallet } from 'lucide-react';
 
 export default function ListForSalePage() {
   const router = useRouter();
@@ -87,30 +89,27 @@ export default function ListForSalePage() {
   // Add connection status indicator
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/producer" className="px-3 py-2 bg-gray-100 rounded">
-            ←
-          </Link>
-          <h1 className="text-2xl font-semibold">List Product for Sale</h1>
-        </div>
-        
-        {/* Wallet status indicator */}
-        <div className="text-sm">
-          {isConnected ? (
-            <span className="text-green-600">
-              ✓ Wallet Connected: {user?.name || 'Not Registered'}
-            </span>
-          ) : (
-            <button 
-              onClick={() => connectWallet()} 
-              className="px-4 py-2 bg-blue-600 text-white rounded"
-            >
-              Connect Wallet
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="List Product for Sale"
+        backHref="/dashboard/producer"
+        actions={
+          <div className="text-sm">
+            {isConnected ? (
+              <span className="inline-flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-md">
+                <Wallet className="h-4 w-4" />
+                Wallet: {user?.name || 'Connected'}
+              </span>
+            ) : (
+              <button
+                onClick={() => connectWallet()}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                <Wallet className="h-4 w-4" /> Connect Wallet
+              </button>
+            )}
+          </div>
+        }
+      />
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -218,7 +217,7 @@ export default function ListForSalePage() {
             />
           </div>
 
-          <div className="flex justify-end gap-4">
+          <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={() => setProductForm({
@@ -230,16 +229,16 @@ export default function ListForSalePage() {
                 category: '',
                 harvestDate: ''
               })}
-              className="px-4 py-2 text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+              className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
             >
-              Clear Form
+              <Trash2 className="h-4 w-4" /> Clear
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
             >
-              {isSubmitting ? 'Listing...' : 'List Product'}
+              <PlusCircle className="h-4 w-4" /> {isSubmitting ? 'Listing…' : 'List Product'}
             </button>
           </div>
         </form>

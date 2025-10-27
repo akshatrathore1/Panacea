@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import PageHeader from '@/components/PageHeader'
+import { RefreshCcw } from 'lucide-react'
 import type { Product } from '@/types/product'
 
 const INR = new Intl.NumberFormat('en-IN', {
@@ -111,20 +113,18 @@ export default function ProducerAnalyticsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/producer" className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">
-            ←
-          </Link>
-          <h1 className="text-2xl font-semibold">Analytics</h1>
-        </div>
-        <button
-          onClick={fetchProducts}
-          className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Refresh
-        </button>
-      </div>
+      <PageHeader
+        title="Analytics"
+        backHref="/dashboard/producer"
+        actions={
+          <button
+            onClick={fetchProducts}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            <RefreshCcw className="h-4 w-4" /> Refresh
+          </button>
+        }
+      />
 
       {isLoading && <div className="p-4 bg-white shadow rounded">Loading analytics…</div>}
       {error && (
@@ -180,7 +180,7 @@ export default function ProducerAnalyticsPage() {
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Note: Sold quantities depend on product.status === 'sold'. If you don’t record sales yet,
+              Note: Sold quantities depend on product.status === &apos;sold&apos;. If you do not record sales yet,
               this will appear as zero.
             </p>
           </section>

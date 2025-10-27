@@ -3,6 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import PageHeader from '@/components/PageHeader';
+import { Download } from 'lucide-react';
 
 console.log('SalesPage rendered'); // <-- debug log
 
@@ -70,29 +72,12 @@ export default function SalesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <Link 
-            href="/dashboard/producer" 
-            className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 text-sm"
-          >
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-2xl font-bold">Sales Management</h1>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard" className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">
-            ← Back to Dashboard
-          </Link>
-          <Link 
-            href="/dashboard/producer/sales" 
-            className="flex items-center p-3 text-gray-700 hover:bg-gray-100 rounded-lg"
-          >
-            <span className="ml-3">List for Sale</span>
-          </Link>
+      <PageHeader
+        title="Sales Management"
+        backHref="/dashboard/producer"
+        actions={
           <button
             onClick={() => {
-              /* placeholder for export functionality */
               const csvHeader = ['id,date,seller,buyer,product,quantity,unit,amount,status'].join(',');
               const rows = transactions.map((t) =>
                 [
@@ -117,12 +102,12 @@ export default function SalesPage() {
               a.click();
               URL.revokeObjectURL(url);
             }}
-            className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Export CSV
+            <Download className="h-4 w-4" /> Export CSV
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="mb-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
         <div className="flex gap-2">
