@@ -137,6 +137,7 @@ export default function IntermediaryDashboard() {
                         <button
                             onClick={toggleLanguage}
                             className="flex items-center space-x-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition-colors"
+                            data-local-language-toggle
                         >
                             <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                         </button>

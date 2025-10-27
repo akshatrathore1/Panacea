@@ -127,6 +127,7 @@ export default function CreateBatchPage() {
                         <button
                             onClick={toggleLanguage}
                             className="text-gray-600 hover:text-gray-900"
+                            data-local-language-toggle
                         >
                             {currentLang === 'en' ? 'हिंदी' : 'English'}
                         </button>

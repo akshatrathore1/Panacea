@@ -209,6 +209,7 @@ useEffect(() => {
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
+                                data-local-language-toggle
                             >
                                 <GlobeAltIcon className="w-5 h-5" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>

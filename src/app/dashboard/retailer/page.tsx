@@ -163,6 +163,7 @@ export default function RetailerDashboard() {
                         <button
                             onClick={toggleLanguage}
                             className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-md transition-colors"
+                            data-local-language-toggle
                         >
                             <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                         </button>

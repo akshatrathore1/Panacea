@@ -97,6 +97,7 @@ export default function AnalyticsPage() {
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 bg-cyan-100 hover:bg-cyan-200 text-cyan-700 px-3 py-1 rounded-md transition-colors"
+                                data-local-language-toggle
                             >
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
