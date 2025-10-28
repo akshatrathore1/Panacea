@@ -3,7 +3,8 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/PageHeader';
-import { Download, PlusCircle } from 'lucide-react';
+import { Download, PlusCircle, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export type OwnerType = 'Farmer' | 'Distributor' | 'Retailer' | 'Consumer' | 'Government';
 
@@ -56,6 +57,8 @@ const initialData: InventoryItem[] = [
 ];
 
 export default function InventoryPage() {
+  const { i18n } = useTranslation();
+  const lang = (i18n.language as 'en' | 'hi') || 'en';
   const [items, setItems] = useState<InventoryItem[]>(initialData);
   const [q, setQ] = useState('');
   const [ownerFilter, setOwnerFilter] = useState<OwnerType | 'All'>('All');
@@ -105,6 +108,17 @@ export default function InventoryPage() {
     });
   };
 
+  const toggleLanguage = () => {
+    const newLang = lang === 'en' ? 'hi' : 'en';
+    i18n.changeLanguage(newLang);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('language', newLang);
+        document.documentElement.lang = newLang;
+      }
+    } catch {}
+  };
+
   const exportCSV = () => {
     const headers = ['id', 'productName', 'ownerType', 'ownerName', 'quantity', 'unit', 'location', 'lastUpdated', 'status'];
     const rows = items.map((it) =>
@@ -123,18 +137,26 @@ export default function InventoryPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Inventory"
+        title={lang === 'en' ? 'Inventory' : 'इन्वेंटरी'}
         backHref="/dashboard/producer"
         actions={
           <div className="flex gap-2">
             <button
+              onClick={toggleLanguage}
+              data-local-language-toggle
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              <Globe className="h-4 w-4" />
+              {lang === 'en' ? 'हिंदी' : 'English'}
+            </button>
+            <button
               onClick={() => setShowAdd((s) => !s)}
               className="inline-flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
             >
-              <PlusCircle className="h-4 w-4" /> {showAdd ? 'Close' : 'Add Item'}
+              <PlusCircle className="h-4 w-4" /> {showAdd ? (lang === 'en' ? 'Close' : 'बंद करें') : (lang === 'en' ? 'Add Item' : 'आइटम जोड़ें')}
             </button>
             <button onClick={exportCSV} className="inline-flex items-center gap-2 bg-gray-800 text-white px-3 py-2 rounded hover:bg-gray-900">
-              <Download className="h-4 w-4" /> Export CSV
+              <Download className="h-4 w-4" /> {lang === 'en' ? 'Export CSV' : 'CSV निर्यात करें'}
             </button>
           </div>
         }
@@ -144,13 +166,13 @@ export default function InventoryPage() {
         <div className="mb-6 bg-white p-4 rounded shadow">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input
-              placeholder="Product name"
+              placeholder={lang === 'en' ? 'Product name' : 'उत्पाद का नाम'}
               value={newItem.productName || ''}
               onChange={(e) => setNewItem((s) => ({ ...s, productName: e.target.value }))}
               className="border p-2 rounded"
             />
             <input
-              placeholder="Owner name"
+              placeholder={lang === 'en' ? 'Owner name' : 'स्वामी का नाम'}
               value={newItem.ownerName || ''}
               onChange={(e) => setNewItem((s) => ({ ...s, ownerName: e.target.value }))}
               className="border p-2 rounded"
@@ -168,27 +190,31 @@ export default function InventoryPage() {
             </select>
             <input
               type="number"
-              placeholder="Quantity"
+              placeholder={lang === 'en' ? 'Quantity' : 'मात्रा'}
               value={String(newItem.quantity ?? '')}
               onChange={(e) => setNewItem((s) => ({ ...s, quantity: Number(e.target.value) }))}
               className="border p-2 rounded"
             />
             <input
-              placeholder="Unit (kg, liters, sacks...)"
+              placeholder={lang === 'en' ? 'Unit (kg, liters, sacks...)' : 'इकाई (kg, लीटर, बोरे...)'}
               value={newItem.unit || ''}
               onChange={(e) => setNewItem((s) => ({ ...s, unit: e.target.value }))}
               className="border p-2 rounded"
             />
             <input
-              placeholder="Location (optional)"
+              placeholder={lang === 'en' ? 'Location (optional)' : 'स्थान (वैकल्पिक)'}
               value={newItem.location || ''}
               onChange={(e) => setNewItem((s) => ({ ...s, location: e.target.value }))}
               className="border p-2 rounded"
             />
           </div>
           <div className="mt-3 flex gap-2">
-            <button onClick={addItem} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">Save</button>
-            <button onClick={() => setShowAdd(false)} className="px-3 py-2 border rounded hover:bg-gray-50">Cancel</button>
+            <button onClick={addItem} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700">
+              {lang === 'en' ? 'Save' : 'सहेजें'}
+            </button>
+            <button onClick={() => setShowAdd(false)} className="px-3 py-2 border rounded hover:bg-gray-50">
+              {lang === 'en' ? 'Cancel' : 'रद्द करें'}
+            </button>
           </div>
         </div>
       )}
@@ -196,33 +222,35 @@ export default function InventoryPage() {
       <div className="mb-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
         <div className="flex gap-2">
           <input
-            placeholder="Search product, owner or location..."
+            placeholder={lang === 'en' ? 'Search product, owner or location...' : 'उत्पाद, स्वामी या स्थान खोजें...'}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="border p-2 rounded w-64"
           />
           <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value as any)} className="border p-2 rounded">
-            <option value="All">All Participants</option>
-            <option value="Farmer">Farmers</option>
-            <option value="Distributor">Distributors</option>
-            <option value="Retailer">Retailers</option>
-            <option value="Consumer">Consumers</option>
-            <option value="Government">Government</option>
+            <option value="All">{lang === 'en' ? 'All Participants' : 'सभी प्रतिभागी'}</option>
+            <option value="Farmer">{lang === 'en' ? 'Farmers' : 'किसान'}</option>
+            <option value="Distributor">{lang === 'en' ? 'Distributors' : 'वितरक'}</option>
+            <option value="Retailer">{lang === 'en' ? 'Retailers' : 'खुदरा विक्रेता'}</option>
+            <option value="Consumer">{lang === 'en' ? 'Consumers' : 'उपभोक्ता'}</option>
+            <option value="Government">{lang === 'en' ? 'Government' : 'सरकार'}</option>
           </select>
         </div>
-        <div className="text-sm text-gray-600">Showing {filtered.length} of {items.length} items</div>
+        <div className="text-sm text-gray-600">
+          {lang === 'en' ? `Showing ${filtered.length} of ${items.length} items` : `${items.length} में से ${filtered.length} आइटम दिखा रहे हैं`}
+        </div>
       </div>
 
       <div className="overflow-x-auto bg-white rounded shadow">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Product</th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Owner</th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Quantity</th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Location</th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Last Updated</th>
-              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Status</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">{lang === 'en' ? 'Product' : 'उत्पाद'}</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">{lang === 'en' ? 'Owner' : 'स्वामी'}</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">{lang === 'en' ? 'Quantity' : 'मात्रा'}</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">{lang === 'en' ? 'Location' : 'स्थान'}</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">{lang === 'en' ? 'Last Updated' : 'अंतिम अपडेट'}</th>
+              <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">{lang === 'en' ? 'Status' : 'स्थिति'}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -248,7 +276,9 @@ export default function InventoryPage() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-sm text-gray-500">No items found.</td>
+                <td colSpan={6} className="p-4 text-center text-sm text-gray-500">
+                  {lang === 'en' ? 'No items found.' : 'कोई आइटम नहीं मिला।'}
+                </td>
               </tr>
             )}
           </tbody>
