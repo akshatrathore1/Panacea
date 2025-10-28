@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import PageHeader from '@/components/PageHeader'
-import { RefreshCcw } from 'lucide-react'
+import { RefreshCcw, Globe } from 'lucide-react'
 import type { Product } from '@/types/product'
 import { useTranslation } from 'react-i18next'
 
@@ -42,6 +42,17 @@ export default function ProducerAnalyticsPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const toggleLanguage = () => {
+    const newLang = lang === 'en' ? 'hi' : 'en'
+    i18n.changeLanguage(newLang)
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('language', newLang)
+        document.documentElement.lang = newLang
+      }
+    } catch {}
   }
 
   useEffect(() => {
@@ -119,12 +130,22 @@ export default function ProducerAnalyticsPage() {
         title={lang === 'en' ? 'Analytics' : 'एनालिटिक्स'}
         backHref="/dashboard/producer"
         actions={
-          <button
-            onClick={fetchProducts}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            <RefreshCcw className="h-4 w-4" /> {lang === 'en' ? 'Refresh' : 'रीफ़्रेश'}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleLanguage}
+              data-local-language-toggle
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              <Globe className="h-4 w-4" />
+              {lang === 'en' ? 'हिंदी' : 'English'}
+            </button>
+            <button
+              onClick={fetchProducts}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              <RefreshCcw className="h-4 w-4" /> {lang === 'en' ? 'Refresh' : 'रीफ़्रेश'}
+            </button>
+          </div>
         }
       />
 
