@@ -1,19 +1,27 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useWeb3 } from '@/components/Providers';
-import type { Product } from '@/types/product';
-import PageHeader from '@/components/PageHeader';
-import { PlusCircle, Trash2, Wallet, Globe } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useWeb3 } from '@/components/Providers'
+import type { Product } from '@/types/product'
+import { useTranslation } from 'react-i18next'
+import {
+  ArrowLeftIcon,
+  GlobeAltIcon,
+  PlusCircleIcon,
+  TagIcon,
+  TrashIcon,
+  WalletIcon
+} from '@heroicons/react/24/outline'
 
 export default function ListForSalePage() {
-  const router = useRouter();
-  const { user, contract, signer, connectWallet, isConnected } = useWeb3();
-  const { i18n } = useTranslation();
-  const lang = (i18n.language as 'en' | 'hi') || 'en';
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter()
+  const { user, contract, signer, connectWallet, isConnected } = useWeb3()
+  const { i18n } = useTranslation()
+  const initialLang = (i18n.language as 'en' | 'hi') || 'en'
+  const [currentLang, setCurrentLang] = useState<'en' | 'hi'>(initialLang)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
     quantity: 0,
@@ -22,50 +30,67 @@ export default function ListForSalePage() {
     description: '',
     category: '',
     harvestDate: ''
-  });
+  })
 
   // Check wallet connection on page load
   useEffect(() => {
     if (!isConnected) {
-      connectWallet().catch(console.error);
+      connectWallet().catch(console.error)
     }
-  }, [isConnected, connectWallet]);
+  }, [isConnected, connectWallet])
 
   const toggleLanguage = () => {
-    const newLang = lang === 'en' ? 'hi' : 'en';
-    i18n.changeLanguage(newLang);
+    const newLang = currentLang === 'en' ? 'hi' : 'en'
+    setCurrentLang(newLang)
+    i18n.changeLanguage(newLang)
     try {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('language', newLang);
-        document.documentElement.lang = newLang;
+        localStorage.setItem('language', newLang)
+        document.documentElement.lang = newLang
       }
-    } catch {}
-  };
+    } catch { }
+  }
+
+  const resetForm = () => {
+    setProductForm({
+      name: '',
+      quantity: 0,
+      unit: 'kg',
+      price: 0,
+      description: '',
+      category: '',
+      harvestDate: ''
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+    e.preventDefault()
+
     // Check wallet and registration
     if (!isConnected) {
       try {
-        await connectWallet();
+        await connectWallet()
       } catch (err) {
-        alert(lang === 'en' ? 'Please install MetaMask and connect your wallet' : 'कृपया MetaMask स्थापित करें और अपना वॉलेट कनेक्ट करें');
-        return;
+        alert(
+          currentLang === 'en'
+            ? 'Please install MetaMask and connect your wallet'
+            : 'कृपया MetaMask स्थापित करें और अपना वॉलेट कनेक्ट करें'
+        )
+        return
       }
     }
 
     if (!user) {
-      router.push('/register'); // Redirect to registration if no user profile
-      return;
+      router.push('/register') // Redirect to registration if no user profile
+      return
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true)
     try {
       const producer = {
         address: signer ? (await signer.getAddress()) : user.address,
         name: user.name || 'Anonymous Producer'
-      };
+      }
 
       const payload = {
         name: productForm.name,
@@ -77,194 +102,252 @@ export default function ListForSalePage() {
         harvestDate: productForm.harvestDate,
         producer,
         images: []
-      };
+      }
 
-      console.log('Submitting payload:', payload);
-      const res = await fetch('/api/marketplace/products', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      console.log('API response status', res.status);
+      console.log('Submitting payload:', payload)
+      const res = await fetch('/api/marketplace/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      console.log('API response status', res.status)
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown' }));
-        throw new Error(err.error || (lang === 'en' ? 'Failed to save product' : 'उत्पाद सहेजने में विफल'));
+        const err = await res.json().catch(() => ({ error: 'Unknown' }))
+        throw new Error(
+          err.error || (currentLang === 'en' ? 'Failed to save product' : 'उत्पाद सहेजने में विफल')
+        )
       }
 
       // navigate to marketplace to see listing
-      router.push('/dashboard/marketplace');
+      router.push('/dashboard/marketplace')
     } catch (err) {
-      console.error('Submit error:', err);
-      alert(err instanceof Error ? err.message : (lang === 'en' ? 'Failed to list product' : 'उत्पाद सूचीबद्ध करने में विफल'));
+      console.error('Submit error:', err)
+      alert(
+        err instanceof Error
+          ? err.message
+          : currentLang === 'en'
+            ? 'Failed to list product'
+            : 'उत्पाद सूचीबद्ध करने में विफल'
+      )
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
-  // Add connection status indicator
+  const inputClass =
+    'w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent'
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <PageHeader
-        title={lang === 'en' ? 'List Product for Sale' : 'बिक्री के लिए उत्पाद सूचीबद्ध करें'}
-        backHref="/dashboard/producer"
-        actions={
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <Link
+              href="/dashboard/producer"
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+              <span>{currentLang === 'en' ? 'Back to Dashboard' : 'डैशबोर्ड पर वापस'}</span>
+            </Link>
             <button
               onClick={toggleLanguage}
               data-local-language-toggle
-              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
-              <Globe className="h-4 w-4" />
-              {lang === 'en' ? 'हिंदी' : 'English'}
+              <GlobeAltIcon className="w-4 h-4" />
+              {currentLang === 'en' ? 'हिंदी' : 'English'}
             </button>
-            <div className="text-sm">
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <section className="bg-white border rounded-xl shadow-sm p-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
+                <TagIcon className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h1 className={`text-2xl font-bold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en' ? 'List Product for Sale' : 'बिक्री के लिए उत्पाद सूचीबद्ध करें'}
+                </h1>
+                <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en'
+                    ? 'Share batch details with trusted buyers and publish transparent pricing in one place.'
+                    : 'विश्वसनीय खरीदारों के साथ बैच विवरण साझा करें और पारदर्शी मूल्य एक ही स्थान पर प्रकाशित करें।'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start gap-2 sm:items-end">
               {isConnected ? (
-                <span className="inline-flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-md">
-                  <Wallet className="h-4 w-4" />
-                  {lang === 'en' ? 'Wallet' : 'वॉलेट'}: {user?.name || (lang === 'en' ? 'Connected' : 'कनेक्टेड')}
+                <span className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs">
+                  <WalletIcon className="w-5 h-5" />
+                  {currentLang === 'en' ? 'Wallet' : 'वॉलेट'}: {user?.name || (currentLang === 'en' ? 'Connected' : 'कनेक्टेड')}
                 </span>
               ) : (
                 <button
                   onClick={() => connectWallet()}
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
-                  <Wallet className="h-4 w-4" /> {lang === 'en' ? 'Connect Wallet' : 'वॉलेट कनेक्ट करें'}
+                  <WalletIcon className="w-5 h-5" /> {currentLang === 'en' ? 'Connect wallet' : 'वॉलेट जोड़ें'}
                 </button>
               )}
+              <div className="text-xs text-gray-500 text-left sm:text-right">
+                {currentLang === 'en'
+                  ? 'Ensure your wallet is linked before submitting the listing.'
+                  : 'सूची जमा करने से पहले सुनिश्चित करें कि आपका वॉलेट जुड़ा हुआ है।'}
+              </div>
             </div>
           </div>
-        }
-      />
+        </section>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {lang === 'en' ? 'Product Name' : 'उत्पाद का नाम'}
-              </label>
-              <input
-                required
-                placeholder={lang === 'en' ? 'Product name' : 'उत्पाद का नाम'}
-                value={productForm.name ?? ''}
-                onChange={(e) => setProductForm(s => ({ ...s, name: e.target.value }))}
-                className="border p-2 rounded"
-              />
-            </div>
+        <section className="bg-white border rounded-xl shadow-sm p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className={`text-sm font-medium text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en' ? 'Product name' : 'उत्पाद का नाम'}
+                </label>
+                <input
+                  required
+                  placeholder={currentLang === 'en' ? 'Product name' : 'उत्पाद का नाम'}
+                  value={productForm.name ?? ''}
+                  onChange={(e) => setProductForm((state) => ({ ...state, name: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {lang === 'en' ? 'Category' : 'श्रेणी'}
-              </label>
-              <select
-                value={productForm.category}
-                onChange={(e) => setProductForm(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full p-2 border rounded focus:ring-2 focus:ring-green-500"
-                required
-              >
-                <option value="">{lang === 'en' ? 'Select category' : 'श्रेणी चुनें'}</option>
-                <option value="vegetables">{lang === 'en' ? 'Vegetables' : 'सब्ज़ियाँ'}</option>
-                <option value="fruits">{lang === 'en' ? 'Fruits' : 'फल'}</option>
-                <option value="grains">{lang === 'en' ? 'Grains' : 'अनाज'}</option>
-                <option value="dairy">{lang === 'en' ? 'Dairy' : 'डेयरी'}</option>
-                <option value="other">{lang === 'en' ? 'Other' : 'अन्य'}</option>
-              </select>
-            </div>
+              <div className="space-y-2">
+                <label className={`text-sm font-medium text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en' ? 'Category' : 'श्रेणी'}
+                </label>
+                <select
+                  value={productForm.category}
+                  onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))}
+                  className={inputClass}
+                  required
+                >
+                  <option value="">{currentLang === 'en' ? 'Select category' : 'श्रेणी चुनें'}</option>
+                  <option value="vegetables">{currentLang === 'en' ? 'Vegetables' : 'सब्ज़ियाँ'}</option>
+                  <option value="fruits">{currentLang === 'en' ? 'Fruits' : 'फल'}</option>
+                  <option value="grains">{currentLang === 'en' ? 'Grains' : 'अनाज'}</option>
+                  <option value="dairy">{currentLang === 'en' ? 'Dairy' : 'डेयरी'}</option>
+                  <option value="other">{currentLang === 'en' ? 'Other' : 'अन्य'}</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {lang === 'en' ? 'Quantity' : 'मात्रा'}
-              </label>
-              <div className="flex gap-2">
+              <div className="space-y-2">
+                <label className={`text-sm font-medium text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en' ? 'Quantity' : 'मात्रा'}
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    required
+                    type="number"
+                    placeholder={currentLang === 'en' ? 'Quantity' : 'मात्रा'}
+                    value={productForm.quantity ?? ''}
+                    onChange={(e) =>
+                      setProductForm((state) => ({
+                        ...state,
+                        quantity: e.target.value === '' ? 0 : Number(e.target.value)
+                      }))
+                    }
+                    className={`${inputClass} flex-1`}
+                    min="0"
+                  />
+                  <select
+                    value={productForm.unit}
+                    onChange={(e) => setProductForm((prev) => ({ ...prev, unit: e.target.value }))}
+                    className={`${inputClass} max-w-[120px]`}
+                    required
+                  >
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="l">L</option>
+                    <option value="units">units</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-sm font-medium text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en' ? 'Price per unit' : `प्रति ${productForm.unit || 'इकाई'} कीमत`}
+                </label>
                 <input
                   required
                   type="number"
-                  placeholder={lang === 'en' ? 'Quantity' : 'मात्रा'}
-                  value={productForm.quantity ?? ''}
-                  onChange={(e) => setProductForm(s => ({ ...s, quantity: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                  className="border p-2 rounded"
+                  placeholder={currentLang === 'en' ? 'Price' : 'कीमत'}
+                  value={productForm.price ?? ''}
+                  onChange={(e) =>
+                    setProductForm((state) => ({
+                      ...state,
+                      price: e.target.value === '' ? 0 : Number(e.target.value)
+                    }))
+                  }
+                  className={inputClass}
                   min="0"
+                  step="0.01"
                 />
-                <select
-                  value={productForm.unit}
-                  onChange={(e) => setProductForm(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-1/3 p-2 border rounded focus:ring-2 focus:ring-green-500"
-                  required
-                >
-                  <option value="kg">kg</option>
-                  <option value="g">g</option>
-                  <option value="l">L</option>
-                  <option value="units">units</option>
-                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-sm font-medium text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                  {currentLang === 'en' ? 'Harvest date' : 'कटाई की तारीख'}
+                </label>
+                <input
+                  type="date"
+                  placeholder={currentLang === 'en' ? 'Harvest date' : 'कटाई की तारीख'}
+                  value={productForm.harvestDate ?? ''}
+                  onChange={(e) =>
+                    setProductForm((state) => ({ ...state, harvestDate: e.target.value || '' }))
+                  }
+                  className={inputClass}
+                />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {lang === 'en' ? 'Price per' : 'प्रति'} {productForm.unit}
+            <div className="space-y-2">
+              <label className={`text-sm font-medium text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                {currentLang === 'en' ? 'Description' : 'विवरण'}
               </label>
-              <input
-                required
-                type="number"
-                placeholder={lang === 'en' ? 'Price' : 'कीमत'}
-                value={productForm.price ?? ''}
-                onChange={(e) => setProductForm(s => ({ ...s, price: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                className="border p-2 rounded"
-                min="0"
-                step="0.01"
+              <textarea
+                placeholder={currentLang === 'en' ? 'Describe quality, certifications, storage conditions…' : 'गुणवत्ता, प्रमाणपत्र, भंडारण स्थिति का वर्णन करें…'}
+                value={productForm.description ?? ''}
+                onChange={(e) => setProductForm((state) => ({ ...state, description: e.target.value }))}
+                className={`${inputClass} min-h-[120px]`}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {lang === 'en' ? 'Harvest Date' : 'कटाई की तारीख'}
-              </label>
-              <input
-                type="date"
-                placeholder={lang === 'en' ? 'Harvest date' : 'कटाई की तारीख'}
-                value={productForm.harvestDate ?? ''}
-                onChange={(e) => setProductForm(s => ({ ...s, harvestDate: e.target.value || null }))}
-                className="border p-2 rounded"
-              />
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={resetForm}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <TrashIcon className="w-5 h-5" />
+                {currentLang === 'en' ? 'Clear form' : 'फ़ॉर्म साफ़ करें'}
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <PlusCircleIcon className="w-5 h-5" />
+                {isSubmitting
+                  ? currentLang === 'en'
+                    ? 'Listing…'
+                    : 'सूचीबद्ध हो रहा है…'
+                  : currentLang === 'en'
+                    ? 'List product'
+                    : 'उत्पाद सूचीबद्ध करें'}
+              </button>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {lang === 'en' ? 'Description' : 'विवरण'}
-            </label>
-            <textarea
-              placeholder={lang === 'en' ? 'Description' : 'विवरण'}
-              value={productForm.description ?? ''}
-              onChange={(e) => setProductForm(s => ({ ...s, description: e.target.value }))}
-              className="w-full border p-2 rounded"
-              rows={4}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setProductForm({
-                name: '',
-                quantity: 0,
-                unit: 'kg',
-                price: 0,
-                description: '',
-                category: '',
-                harvestDate: ''
-              })}
-              className="inline-flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
-            >
-              <Trash2 className="h-4 w-4" /> {lang === 'en' ? 'Clear' : 'साफ़ करें'}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
-            >
-              <PlusCircle className="h-4 w-4" /> {isSubmitting ? (lang === 'en' ? 'Listing…' : 'सूचीबद्ध हो रहा है…') : (lang === 'en' ? 'List Product' : 'उत्पाद सूचीबद्ध करें')}
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </section>
+      </main>
     </div>
-  );
+  )
 }

@@ -1,32 +1,40 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+    ArrowLeftIcon,
     ChartBarIcon,
     ArrowTrendingUpIcon,
     ArrowTrendingDownIcon,
     CurrencyRupeeIcon,
     TruckIcon,
     UsersIcon,
-    BuildingStorefrontIcon,
-    CalendarIcon,
-    MapPinIcon,
-    ClockIcon
+    GlobeAltIcon
 } from '@heroicons/react/24/outline'
 
+type Timeframe = '7days' | '30days' | '90days' | '1year'
+type PriceTrend = 'up' | 'down'
+
 export default function AnalyticsPage() {
-    const { t, i18n } = useTranslation()
-    const [currentLang, setCurrentLang] = useState('en')
-    const [timeframe, setTimeframe] = useState('30days')
+    const { i18n } = useTranslation()
+    const initialLang = (i18n.language as 'en' | 'hi') || 'en'
+    const [currentLang, setCurrentLang] = useState<'en' | 'hi'>(initialLang)
+    const [timeframe, setTimeframe] = useState<Timeframe>('30days')
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
         setCurrentLang(newLang)
         i18n.changeLanguage(newLang)
+        try {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('language', newLang)
+                document.documentElement.lang = newLang
+            }
+        } catch { }
     }
 
-    // Mock analytics data
     const overallStats = {
         totalTransactions: 1247,
         totalValue: 2850000,
@@ -34,13 +42,19 @@ export default function AnalyticsPage() {
         activeUsers: 342
     }
 
-    const priceData = [
-        { product: 'Wheat', currentPrice: 45, change: 2.5, trend: 'up', volume: '2.5K kg' },
-        { product: 'Rice', currentPrice: 85, change: -1.2, trend: 'down', volume: '1.8K kg' },
-        { product: 'Vegetables', currentPrice: 65, change: 5.8, trend: 'up', volume: '950 kg' },
-        { product: 'Fruits', currentPrice: 120, change: -3.1, trend: 'down', volume: '650 kg' },
-        { product: 'Milk', currentPrice: 55, change: 1.8, trend: 'up', volume: '1.2K L' }
-    ]
+    const priceData: Array<{
+        product: string
+        currentPrice: number
+        change: number
+        trend: PriceTrend
+        volume: string
+    }> = [
+            { product: 'Wheat', currentPrice: 45, change: 2.5, trend: 'up', volume: '2.5K kg' },
+            { product: 'Rice', currentPrice: 85, change: -1.2, trend: 'down', volume: '1.8K kg' },
+            { product: 'Vegetables', currentPrice: 65, change: 5.8, trend: 'up', volume: '950 kg' },
+            { product: 'Fruits', currentPrice: 120, change: -3.1, trend: 'down', volume: '650 kg' },
+            { product: 'Milk', currentPrice: 55, change: 1.8, trend: 'up', volume: '1.2K L' }
+        ]
 
     const regionData = [
         { state: 'Haryana', transactions: 456, value: 1250000, growthRate: 12.5 },
@@ -63,337 +77,335 @@ export default function AnalyticsPage() {
         { month: 'Jan', farmers: 78, intermediaries: 22, retailers: 48, consumers: 342 }
     ]
 
+    const formatBarWidth = (value: number, max: number) => `${Math.min((value / max) * 100, 100)}%`
+
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm">
+            <header className="bg-white shadow-sm border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center py-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-cyan-600 rounded-lg flex items-center justify-center">
-                                <ChartBarIcon className="w-6 h-6 text-white" />
+                    <div className="flex items-center justify-between py-4">
+                        <Link
+                            href="/dashboard/producer"
+                            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
+                        >
+                            <ArrowLeftIcon className="h-5 w-5" />
+                            <span>{currentLang === 'en' ? 'Back to Dashboard' : 'डैशबोर्ड पर वापस'}</span>
+                        </Link>
+                        <button
+                            onClick={toggleLanguage}
+                            data-local-language-toggle
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                            <GlobeAltIcon className="h-4 w-4" />
+                            {currentLang === 'en' ? 'हिंदी' : 'English'}
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+                <section className="bg-white border rounded-xl shadow-sm p-6">
+                    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-cyan-100">
+                                <ChartBarIcon className="h-6 w-6 text-cyan-600" />
                             </div>
                             <div>
                                 <h1 className={`text-2xl font-bold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Analytics Dashboard' : 'एनालिटिक्स डैशबोर्ड'}
                                 </h1>
                                 <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Market Insights & Supply Chain Analytics' : 'बाजार अंतर्दृष्टि और आपूर्ति श्रृंखला एनालिटिक्स'}
+                                    {currentLang === 'en'
+                                        ? 'Track marketplace performance, pricing trends, and supply chain health in real time.'
+                                        : 'मार्केटप्लेस प्रदर्शन, मूल्य रुझान और आपूर्ति श्रृंखला की स्थिति को रीयल-टाइम में ट्रैक करें।'}
                                 </p>
                             </div>
                         </div>
-
-                        <div className="flex items-center space-x-4">
+                        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {currentLang === 'en' ? 'Timeframe' : 'समय अवधि'}
+                            </span>
                             <select
                                 value={timeframe}
-                                onChange={(e) => setTimeframe(e.target.value)}
-                                className={`bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm ${currentLang === 'hi' ? 'font-hindi' : ''}`}
+                                onChange={(event) => setTimeframe(event.target.value as Timeframe)}
+                                className={`rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${currentLang === 'hi' ? 'font-hindi' : ''}`}
                             >
                                 <option value="7days">{currentLang === 'en' ? 'Last 7 Days' : 'पिछले 7 दिन'}</option>
                                 <option value="30days">{currentLang === 'en' ? 'Last 30 Days' : 'पिछले 30 दिन'}</option>
                                 <option value="90days">{currentLang === 'en' ? 'Last 3 Months' : 'पिछले 3 महीने'}</option>
                                 <option value="1year">{currentLang === 'en' ? 'Last Year' : 'पिछला साल'}</option>
                             </select>
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 bg-cyan-100 hover:bg-cyan-200 text-cyan-700 px-3 py-1 rounded-md transition-colors"
-                                data-local-language-toggle
-                            >
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
                         </div>
                     </div>
-                </div>
-            </header>
+                </section>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Overall Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-xl shadow-sm border p-6">
+                <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-xl border bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Total Transactions' : 'कुल लेनदेन'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{overallStats.totalTransactions.toLocaleString()}</p>
-                                <p className="text-sm text-green-600 flex items-center mt-1">
-                                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                                <p className="mt-1 flex items-center text-sm text-green-600">
+                                    <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
                                     +12.5%
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <ChartBarIcon className="w-6 h-6 text-blue-600" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+                                <ChartBarIcon className="h-6 w-6 text-blue-600" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border p-6">
+                    <div className="rounded-xl border bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Total Value' : 'कुल मूल्य'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">₹{(overallStats.totalValue / 100000).toFixed(1)}L</p>
-                                <p className="text-sm text-green-600 flex items-center mt-1">
-                                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                                <p className="mt-1 flex items-center text-sm text-green-600">
+                                    <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
                                     +8.2%
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <CurrencyRupeeIcon className="w-6 h-6 text-green-600" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
+                                <CurrencyRupeeIcon className="h-6 w-6 text-green-600" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border p-6">
+                    <div className="rounded-xl border bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Average Price' : 'औसत कीमत'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">₹{overallStats.averagePrice}/kg</p>
-                                <p className="text-sm text-red-600 flex items-center mt-1">
-                                    <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
+                                <p className="mt-1 flex items-center text-sm text-red-600">
+                                    <ArrowTrendingDownIcon className="mr-1 h-4 w-4" />
                                     -2.1%
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <TruckIcon className="w-6 h-6 text-yellow-600" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100">
+                                <TruckIcon className="h-6 w-6 text-yellow-600" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border p-6">
+                    <div className="rounded-xl border bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Active Users' : 'सक्रिय उपयोगकर्ता'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{overallStats.activeUsers}</p>
-                                <p className="text-sm text-green-600 flex items-center mt-1">
-                                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
+                                <p className="mt-1 flex items-center text-sm text-green-600">
+                                    <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
                                     +15.8%
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <UsersIcon className="w-6 h-6 text-purple-600" />
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+                                <UsersIcon className="h-6 w-6 text-purple-600" />
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    {/* Price Trends */}
-                    <div className="bg-white rounded-xl shadow-sm border">
-                        <div className="p-6 border-b border-gray-200">
+                <section className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                    <div className="rounded-xl border bg-white shadow-sm">
+                        <div className="border-b border-gray-200 p-6">
                             <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                 {currentLang === 'en' ? 'Price Trends' : 'मूल्य रुझान'}
                             </h2>
                         </div>
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                {priceData.map((item) => (
-                                    <div key={item.product} className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <h3 className="font-medium text-gray-900">{item.product}</h3>
-                                            <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Volume:' : 'मात्रा:'} {item.volume}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-bold text-gray-900">₹{item.currentPrice}/kg</p>
-                                            <p className={`text-sm flex items-center ${item.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                                                {item.trend === 'up' ? (
-                                                    <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                                                ) : (
-                                                    <ArrowTrendingDownIcon className="w-4 h-4 mr-1" />
-                                                )}
-                                                {Math.abs(item.change)}%
-                                            </p>
-                                        </div>
+                        <div className="p-6 space-y-4">
+                            {priceData.map((item) => (
+                                <div key={item.product} className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="font-medium text-gray-900">{item.product}</h3>
+                                        <p className="text-sm text-gray-600">
+                                            {currentLang === 'en' ? 'Volume:' : 'मात्रा:'} {item.volume}
+                                        </p>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="text-right">
+                                        <p className="text-lg font-bold text-gray-900">₹{item.currentPrice}/kg</p>
+                                        <p
+                                            className={`mt-1 flex items-center text-sm ${item.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                                                }`}
+                                        >
+                                            {item.trend === 'up' ? (
+                                                <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
+                                            ) : (
+                                                <ArrowTrendingDownIcon className="mr-1 h-4 w-4" />
+                                            )}
+                                            {Math.abs(item.change)}%
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Regional Performance */}
-                    <div className="bg-white rounded-xl shadow-sm border">
-                        <div className="p-6 border-b border-gray-200">
+                    <div className="rounded-xl border bg-white shadow-sm">
+                        <div className="border-b border-gray-200 p-6">
                             <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                 {currentLang === 'en' ? 'Regional Performance' : 'क्षेत्रीय प्रदर्शन'}
                             </h2>
                         </div>
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                {regionData.map((region) => (
-                                    <div key={region.state} className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <h3 className="font-medium text-gray-900">{region.state}</h3>
-                                            <p className="text-sm text-gray-600">
-                                                {region.transactions} {currentLang === 'en' ? 'transactions' : 'लेनदेन'}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-lg font-bold text-gray-900">₹{(region.value / 100000).toFixed(1)}L</p>
-                                            <p className="text-sm text-green-600 flex items-center">
-                                                <ArrowTrendingUpIcon className="w-4 h-4 mr-1" />
-                                                +{region.growthRate}%
-                                            </p>
-                                        </div>
+                        <div className="p-6 space-y-4">
+                            {regionData.map((region) => (
+                                <div key={region.state} className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                        <h3 className="font-medium text-gray-900">{region.state}</h3>
+                                        <p className="text-sm text-gray-600">
+                                            {region.transactions} {currentLang === 'en' ? 'transactions' : 'लेनदेन'}
+                                        </p>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="text-right">
+                                        <p className="text-lg font-bold text-gray-900">₹{(region.value / 100000).toFixed(1)}L</p>
+                                        <p className="mt-1 flex items-center text-sm text-green-600">
+                                            <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
+                                            +{region.growthRate}%
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Supply Chain Metrics */}
-                    <div className="bg-white rounded-xl shadow-sm border">
-                        <div className="p-6 border-b border-gray-200">
+                <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+                    <div className="rounded-xl border bg-white shadow-sm">
+                        <div className="border-b border-gray-200 p-6">
                             <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                 {currentLang === 'en' ? 'Supply Chain Health' : 'आपूर्ति श्रृंखला स्वास्थ्य'}
                             </h2>
                         </div>
-                        <div className="p-6 space-y-6">
+                        <div className="space-y-6 p-6">
                             <div>
-                                <div className="flex justify-between items-center mb-2">
+                                <div className="mb-2 flex items-center justify-between">
                                     <span className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Avg Delivery Time' : 'औसत डिलीवरी समय'}
                                     </span>
                                     <span className="text-sm font-bold text-gray-900">{supplyChainMetrics.averageDeliveryTime} days</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div className="bg-green-600 h-2 rounded-full" style={{ width: '80%' }}></div>
+                                <div className="h-2 w-full rounded-full bg-gray-200">
+                                    <div className="h-2 rounded-full bg-green-600" style={{ width: '80%' }}></div>
                                 </div>
                             </div>
 
                             <div>
-                                <div className="flex justify-between items-center mb-2">
+                                <div className="mb-2 flex items-center justify-between">
                                     <span className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'On-time Delivery' : 'समय पर डिलीवरी'}
                                     </span>
                                     <span className="text-sm font-bold text-gray-900">{supplyChainMetrics.onTimeDeliveryRate}%</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: '94%' }}></div>
+                                <div className="h-2 w-full rounded-full bg-gray-200">
+                                    <div className="h-2 rounded-full bg-blue-600" style={{ width: '94%' }}></div>
                                 </div>
                             </div>
 
                             <div>
-                                <div className="flex justify-between items-center mb-2">
+                                <div className="mb-2 flex items-center justify-between">
                                     <span className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Quality Score' : 'गुणवत्ता स्कोर'}
                                     </span>
                                     <span className="text-sm font-bold text-gray-900">{supplyChainMetrics.qualityScore}/10</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div className="bg-yellow-600 h-2 rounded-full" style={{ width: '87%' }}></div>
+                                <div className="h-2 w-full rounded-full bg-gray-200">
+                                    <div className="h-2 rounded-full bg-yellow-600" style={{ width: '87%' }}></div>
                                 </div>
                             </div>
 
                             <div>
-                                <div className="flex justify-between items-center mb-2">
+                                <div className="mb-2 flex items-center justify-between">
                                     <span className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Customer Satisfaction' : 'ग्राहक संतुष्टि'}
                                     </span>
                                     <span className="text-sm font-bold text-gray-900">{supplyChainMetrics.customerSatisfaction}/5 ★</span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div className="bg-purple-600 h-2 rounded-full" style={{ width: '92%' }}></div>
+                                <div className="h-2 w-full rounded-full bg-gray-200">
+                                    <div className="h-2 rounded-full bg-purple-600" style={{ width: '92%' }}></div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* User Growth */}
-                    <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border">
-                        <div className="p-6 border-b border-gray-200">
+                    <div className="lg:col-span-2 rounded-xl border bg-white shadow-sm">
+                        <div className="border-b border-gray-200 p-6">
                             <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                 {currentLang === 'en' ? 'User Growth by Role' : 'भूमिका के आधार पर उपयोगकर्ता वृद्धि'}
                             </h2>
                         </div>
-                        <div className="p-6">
-                            {/* Simple bar chart representation */}
-                            <div className="space-y-6">
-                                {monthlyData.map((data, index) => (
-                                    <div key={data.month} className="space-y-3">
-                                        <h3 className="font-medium text-gray-900">{data.month} 2024</h3>
-                                        <div className="grid grid-cols-4 gap-4">
-                                            <div>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                        {currentLang === 'en' ? 'Farmers' : 'किसान'}
-                                                    </span>
-                                                    <span className="text-sm font-medium">{data.farmers}</span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-green-600 h-2 rounded-full"
-                                                        style={{ width: `${(data.farmers / 100) * 100}%` }}
-                                                    ></div>
-                                                </div>
+                        <div className="p-6 space-y-6">
+                            {monthlyData.map((data) => (
+                                <div key={data.month} className="space-y-3">
+                                    <h3 className="font-medium text-gray-900">{data.month} 2024</h3>
+                                    <div className="grid grid-cols-4 gap-4">
+                                        <div>
+                                            <div className="mb-1 flex items-center justify-between">
+                                                <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    {currentLang === 'en' ? 'Farmers' : 'किसान'}
+                                                </span>
+                                                <span className="text-sm font-medium">{data.farmers}</span>
                                             </div>
-                                            <div>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                        {currentLang === 'en' ? 'Intermediaries' : 'मध्यस्थ'}
-                                                    </span>
-                                                    <span className="text-sm font-medium">{data.intermediaries}</span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-blue-600 h-2 rounded-full"
-                                                        style={{ width: `${(data.intermediaries / 30) * 100}%` }}
-                                                    ></div>
-                                                </div>
+                                            <div className="h-2 w-full rounded-full bg-gray-200">
+                                                <div className="h-2 rounded-full bg-green-600" style={{ width: formatBarWidth(data.farmers, 100) }}></div>
                                             </div>
-                                            <div>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                        {currentLang === 'en' ? 'Retailers' : 'रिटेलर'}
-                                                    </span>
-                                                    <span className="text-sm font-medium">{data.retailers}</span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-purple-600 h-2 rounded-full"
-                                                        style={{ width: `${(data.retailers / 60) * 100}%` }}
-                                                    ></div>
-                                                </div>
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 flex items-center justify-between">
+                                                <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    {currentLang === 'en' ? 'Intermediaries' : 'मध्यस्थ'}
+                                                </span>
+                                                <span className="text-sm font-medium">{data.intermediaries}</span>
                                             </div>
-                                            <div>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                        {currentLang === 'en' ? 'Consumers' : 'उपभोक्ता'}
-                                                    </span>
-                                                    <span className="text-sm font-medium">{data.consumers}</span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-indigo-600 h-2 rounded-full"
-                                                        style={{ width: `${(data.consumers / 400) * 100}%` }}
-                                                    ></div>
-                                                </div>
+                                            <div className="h-2 w-full rounded-full bg-gray-200">
+                                                <div className="h-2 rounded-full bg-blue-600" style={{ width: formatBarWidth(data.intermediaries, 30) }}></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 flex items-center justify-between">
+                                                <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    {currentLang === 'en' ? 'Retailers' : 'रिटेलर'}
+                                                </span>
+                                                <span className="text-sm font-medium">{data.retailers}</span>
+                                            </div>
+                                            <div className="h-2 w-full rounded-full bg-gray-200">
+                                                <div className="h-2 rounded-full bg-purple-600" style={{ width: formatBarWidth(data.retailers, 60) }}></div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="mb-1 flex items-center justify-between">
+                                                <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    {currentLang === 'en' ? 'Consumers' : 'उपभोक्ता'}
+                                                </span>
+                                                <span className="text-sm font-medium">{data.consumers}</span>
+                                            </div>
+                                            <div className="h-2 w-full rounded-full bg-gray-200">
+                                                <div className="h-2 rounded-full bg-indigo-600" style={{ width: formatBarWidth(data.consumers, 400) }}></div>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* Key Insights */}
-                <div className="mt-8 bg-white rounded-xl shadow-sm border">
-                    <div className="p-6 border-b border-gray-200">
+                <section className="rounded-xl border bg-white shadow-sm">
+                    <div className="border-b border-gray-200 p-6">
                         <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                             {currentLang === 'en' ? 'Key Insights' : 'मुख्य अंतर्दृष्टि'}
                         </h2>
                     </div>
                     <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <h3 className={`font-semibold text-green-800 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                                <h3 className={`mb-2 font-semibold text-green-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Growing Demand' : 'बढ़ती मांग'}
                                 </h3>
                                 <p className={`text-sm text-green-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -402,8 +414,8 @@ export default function AnalyticsPage() {
                                         : 'शहरी क्षेत्रों में उच्च मांग के कारण सब्जियों की कीमतों में 5.8% की वृद्धि हुई।'}
                                 </p>
                             </div>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h3 className={`font-semibold text-blue-800 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                <h3 className={`mb-2 font-semibold text-blue-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Regional Leader' : 'क्षेत्रीय अग्रणी'}
                                 </h3>
                                 <p className={`text-sm text-blue-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -412,8 +424,8 @@ export default function AnalyticsPage() {
                                         : 'हरियाणा 456 लेनदेन के साथ अग्रणी है, जो कुल प्लेटफॉर्म गतिविधि का 44% योगदान देता है।'}
                                 </p>
                             </div>
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <h3 className={`font-semibold text-yellow-800 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                                <h3 className={`mb-2 font-semibold text-yellow-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Quality Excellence' : 'गुणवत्ता उत्कृष्टता'}
                                 </h3>
                                 <p className={`text-sm text-yellow-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -424,8 +436,9 @@ export default function AnalyticsPage() {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                </section>
+            </main>
         </div>
     )
 }
+

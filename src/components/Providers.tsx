@@ -5,7 +5,9 @@ import { ethers } from 'ethers'
 import '@/lib/i18n'
 import type { UserProfile } from '@/types/user'
 import contractABI from '@/lib/contractABI.json'; // adjust path to where your ABI is stored
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xYourContractAddressHere";
+
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xYourContractAddressHere'
+const hasConfiguredContract = ethers.isAddress(CONTRACT_ADDRESS) && CONTRACT_ADDRESS !== '0xYourContractAddressHere'
 
 
 
@@ -36,7 +38,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         localStorage.setItem('krishialok_user', JSON.stringify(profile))
     }
 
-       useEffect(() => {
+    useEffect(() => {
         const savedUser = localStorage.getItem('krishialok_user')
         if (savedUser) {
             try {
@@ -52,7 +54,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined' && window.ethereum) {
             const web3Provider = new ethers.BrowserProvider(window.ethereum)
             setProvider(web3Provider)
-            web3Provider.getSigner().then(setSigner).catch(() => {})
+            web3Provider.getSigner().then(setSigner).catch(() => { })
         }
     }, [])
 
@@ -74,12 +76,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
             setSigner(web3Signer)
             setIsConnected(true)
             // Initialize contract
-            try {
-            const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, contractABI, web3Signer);
-            setContract(contractInstance);
-            console.log("✅ Contract connected:", CONTRACT_ADDRESS);
-            } catch (err) {
-            console.error("❌ Failed to initialize contract:", err);
+            if (!hasConfiguredContract) {
+                console.warn('Smart contract address is not configured. Update NEXT_PUBLIC_CONTRACT_ADDRESS (or edit Providers.tsx) to enable blockchain features.')
+            } else {
+                try {
+                    const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, contractABI, web3Signer)
+                    setContract(contractInstance)
+                    console.log('✅ Contract connected:', CONTRACT_ADDRESS)
+                } catch (err) {
+                    console.error('❌ Failed to initialize contract:', err)
+                }
             }
 
 
@@ -199,11 +205,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 }
 
 export function useWeb3() {
-  const context = useContext(Web3Context);
-  if (!context) {
-    throw new Error('useWeb3 must be used within Providers');
-  }
-  return context;
+    const context = useContext(Web3Context);
+    if (!context) {
+        throw new Error('useWeb3 must be used within Providers');
+    }
+    return context;
 }
 
 // Make sure Providers wraps your app in layout

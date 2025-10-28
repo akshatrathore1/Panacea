@@ -411,11 +411,15 @@ export const SUPPLY_CHAIN_ABI = [
     }
 ]
 
-// Default contract address for Sepolia testnet (update after deployment)
-export const CONTRACT_ADDRESS = "0x..." // Will be updated after deployment
+export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0xYourContractAddressHere'
+export const isContractConfigured = ethers.isAddress(CONTRACT_ADDRESS) && CONTRACT_ADDRESS !== '0xYourContractAddressHere'
 
 // Contract instance creation
 export const getContract = (provider: ethers.Provider | ethers.Signer) => {
+    if (!isContractConfigured) {
+        throw new Error('Smart contract address is not configured. Update NEXT_PUBLIC_CONTRACT_ADDRESS or blockchain.ts before calling blockchain helpers.')
+    }
+
     return new ethers.Contract(CONTRACT_ADDRESS, SUPPLY_CHAIN_ABI, provider)
 }
 

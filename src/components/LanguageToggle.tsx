@@ -2,45 +2,65 @@
 
 import React, { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
+import { usePathname } from "next/navigation";
 import i18n from "@/lib/i18n";
 
 export default function LanguageToggle() {
+  const pathname = usePathname();
   const [lang, setLang] = useState<string>(i18n.language || "en");
   const [hidden, setHidden] = useState<boolean>(false);
 
+  const STORAGE_KEY = "language";
+
   useEffect(() => {
-    try {
-      const stored = typeof window !== "undefined" ? localStorage.getItem("lang") : null;
-      const initial = stored || i18n.language || "en";
-      if (initial !== i18n.language) {
-        i18n.changeLanguage(initial);
+    const resolveInitialLanguage = () => {
+      try {
+        const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+        return stored || i18n.language || "en";
+      } catch {
+        return i18n.language || "en";
       }
-      setLang(initial);
-      if (typeof document !== "undefined") {
-        document.documentElement.setAttribute("lang", initial);
-      }
-      // Auto-hide if a page renders its own language toggle
-      if (typeof document !== "undefined") {
-        const check = () => {
-          const hasLocal = document.querySelector('[data-local-language-toggle]');
-          setHidden(Boolean(hasLocal));
-        };
-        check();
-        const observer = new MutationObserver(() => check());
-        observer.observe(document.body, { childList: true, subtree: true });
-        return () => observer.disconnect();
-      }
-    } catch {}
-  }, []);
+    };
+
+    const initial = resolveInitialLanguage();
+    setLang(initial);
+
+    if (initial !== i18n.language) {
+      i18n.changeLanguage(initial);
+    }
+
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("lang", initial);
+    }
+
+    let observer: MutationObserver | null = null;
+
+    const evaluateTogglePresence = () => {
+      if (typeof document === "undefined") return;
+      const localToggle = document.querySelector("[data-local-language-toggle]");
+      setHidden(Boolean(localToggle));
+    };
+
+    evaluateTogglePresence();
+
+    if (typeof document !== "undefined") {
+      observer = new MutationObserver(() => evaluateTogglePresence());
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    return () => {
+      observer?.disconnect();
+    };
+  }, [pathname]);
 
   const toggle = () => {
     const next = lang === "en" ? "hi" : "en";
     i18n.changeLanguage(next);
     setLang(next);
     try {
-      if (typeof window !== "undefined") localStorage.setItem("lang", next);
+      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, next);
       if (typeof document !== "undefined") document.documentElement.setAttribute("lang", next);
-    } catch {}
+    } catch { }
   };
 
   const targetLabel = lang === "en" ? "हिंदी" : "English";
