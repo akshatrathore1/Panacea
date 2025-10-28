@@ -52,7 +52,7 @@ export default function LanguageToggle() {
       type="button"
       onClick={toggle}
       aria-label="Toggle language"
-      className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur px-4 py-2 text-sm font-medium text-gray-800 shadow-lg ring-1 ring-gray-200 hover:bg-white"
+      className="fixed top-4 right-4 z-50 inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur px-4 py-2 text-sm font-medium text-gray-800 shadow-lg ring-1 ring-gray-200 hover:bg-white"
     >
       <Globe className="h-4 w-4" />
       {targetLabel}
