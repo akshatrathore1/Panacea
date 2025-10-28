@@ -20,7 +20,7 @@ function RegisterContent() {
     const { t, i18n } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
-    const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser } = useWeb3()
+    const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser, walletExplicitlyConnected } = useWeb3()
 
     const [currentLang, setCurrentLang] = useState('en')
     const [step, setStep] = useState(1)
@@ -175,11 +175,25 @@ function RegisterContent() {
             }
 
             if (signer) {
-                await registerUser({
+                const saved = await registerUser({
                     role: selectedRole,
                     name: formData.name,
                     phone: formData.phone
                 })
+
+                // Ensure local context/localStorage updated and then navigate to dashboard
+                try { setLocalUser(saved) } catch (e) { /* ignore */ }
+
+                try {
+                    await router.replace(`/dashboard/${saved.role}`)
+                    await new Promise((res) => setTimeout(res, 200))
+                    if (typeof window !== 'undefined' && !window.location.pathname.startsWith(`/dashboard/${saved.role}`)) {
+                        console.warn('router.replace did not navigate, forcing push.')
+                        router.push(`/dashboard/${saved.role}`)
+                    }
+                } catch (navErr) {
+                    console.error('Navigation after wallet connect failed:', navErr)
+                }
             }
         } catch (error) {
             console.error('Registration failed:', error)
@@ -419,7 +433,8 @@ function RegisterContent() {
                                     : 'पंजीकरण पूरा करने और ब्लॉकचेन सुविधाओं का उपयोग शुरू करने के लिए अपना MetaMask वॉलेट कनेक्ट करें'}
                             </p>
 
-                            {!isConnected ? (
+                            {/* Show Connect / Skip unless the wallet was explicitly connected by the user in this session. */}
+                            {!isConnected || !walletExplicitlyConnected ? (
                                 <>
                                     {processingSkip ? (
                                         <div className="py-8">

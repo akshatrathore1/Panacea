@@ -17,6 +17,8 @@ interface Web3ContextType {
     registerUser: (userData: Omit<UserProfile, 'address' | 'verified'>) => Promise<UserProfile>
     // Persist a user profile into the context/localStorage (used for phone-only sign-in)
     setLocalUser: (profile: UserProfile) => void
+    // Whether the wallet was explicitly connected by the user during this session
+    walletExplicitlyConnected: boolean
 }
 
 const Web3Context = createContext<Web3ContextType | null>(null)
@@ -227,6 +229,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         registerUser
         ,
         setLocalUser
+        ,
+        walletExplicitlyConnected
     }
 
     return (
