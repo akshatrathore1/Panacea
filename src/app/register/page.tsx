@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
@@ -21,6 +21,33 @@ function RegisterContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser, walletExplicitlyConnected } = useWeb3()
+    const pathname = usePathname()
+
+    // Safely navigate to a new path: skip replace if already on the same path,
+    // otherwise attempt replace and fall back to push if replace doesn't take effect.
+    const safeReplace = async (target: string) => {
+        try {
+            if (typeof window !== 'undefined' && window.location.pathname.startsWith(target)) {
+                // Already at or under the target path — no navigation needed
+                return
+            }
+
+            await router.replace(target)
+            // short delay to let the router settle; if it didn't navigate, force push
+            await new Promise((res) => setTimeout(res, 200))
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith(target)) {
+                console.warn('router.replace did not navigate, forcing push.')
+                router.push(target)
+            }
+        } catch (err) {
+            console.error('Navigation error (safeReplace):', err)
+            try {
+                router.push(target)
+            } catch (pushErr) {
+                console.error('Fallback push failed:', pushErr)
+            }
+        }
+    }
 
     const [currentLang, setCurrentLang] = useState('en')
     const [step, setStep] = useState(1)
@@ -140,13 +167,7 @@ function RegisterContent() {
                     try { setLocalUser(saved) } catch (e) { /* ignore */ }
 
                     // Try replace first, then fallback to push after short delay if not redirected
-                    await router.replace(`/dashboard/${saved.role}`)
-                    // small delay to allow navigation; if not navigated, fallback
-                    await new Promise((res) => setTimeout(res, 200))
-                    if (typeof window !== 'undefined' && !window.location.pathname.startsWith(`/dashboard/${saved.role}`)) {
-                        console.warn('router.replace did not navigate, forcing push.')
-                        router.push(`/dashboard/${saved.role}`)
-                    }
+                    await safeReplace(`/dashboard/${saved.role}`)
                 } catch (err) {
                     console.error('Registration error (consumer):', err)
                     alert(currentLang === 'en' ? 'Registration failed' : 'पंजीकरण विफल')
@@ -185,12 +206,7 @@ function RegisterContent() {
                 try { setLocalUser(saved) } catch (e) { /* ignore */ }
 
                 try {
-                    await router.replace(`/dashboard/${saved.role}`)
-                    await new Promise((res) => setTimeout(res, 200))
-                    if (typeof window !== 'undefined' && !window.location.pathname.startsWith(`/dashboard/${saved.role}`)) {
-                        console.warn('router.replace did not navigate, forcing push.')
-                        router.push(`/dashboard/${saved.role}`)
-                    }
+                    await safeReplace(`/dashboard/${saved.role}`)
                 } catch (navErr) {
                     console.error('Navigation after wallet connect failed:', navErr)
                 }
@@ -494,7 +510,7 @@ function RegisterContent() {
                                                             console.log('Registered (skip) saved profile:', saved)
                                                             // ensure local context updated
                                                             try { setLocalUser(saved) } catch (e) {}
-                                                            await router.replace(`/dashboard/${saved.role}`)
+                                                            await safeReplace(`/dashboard/${saved.role}`)
                                                         } catch (err) {
                                                             console.error('Registration skipped wallet error:', err)
                                                             alert(currentLang === 'en' ? 'Registration failed' : 'पंजीकरण विफल')

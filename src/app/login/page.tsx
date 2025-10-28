@@ -36,7 +36,37 @@ export default function LoginPage() {
 
     const handleWalletLogin = async () => {
         try {
-            await connectWallet()
+            const signer = await connectWallet()
+
+            // After connecting the wallet, if a user profile exists in the Web3
+            // context or in localStorage, redirect them to the appropriate
+            // dashboard. Otherwise send them to registration so they can create
+            // a profile for this wallet address.
+            if (signer) {
+                // Prefer the context user if present
+                if (user) {
+                    router.push(`/dashboard/${user.role}`)
+                    return
+                }
+
+                // Fallback: check persisted local user that may have been
+                // loaded by the provider earlier
+                try {
+                    const saved = localStorage.getItem('krishialok_user')
+                    if (saved) {
+                        const parsed = JSON.parse(saved)
+                        if (parsed?.address) {
+                            router.push(`/dashboard/${parsed.role || 'consumer'}`)
+                            return
+                        }
+                    }
+                } catch (err) {
+                    // ignore parse errors and fall through to registration
+                }
+
+                // No profile found - forward user to registration to create one
+                router.push('/register')
+            }
         } catch (error) {
             console.error('Wallet login failed:', error)
         }
