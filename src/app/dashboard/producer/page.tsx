@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -117,13 +118,70 @@ export default function ProducerDashboard() {
             action: currentLang === 'en' ? 'View Details' : 'विवरण देखें'
         }
     ]
+const [weatherData, setWeatherData] = useState({
+  temperature: '—',
+  humidity: '—',
+  rainfall: '—',
+  condition: currentLang === 'en' ? 'Loading...' : 'लोड हो रहा है...',
+  city: currentLang === 'en' ? 'Loading...' : 'लोड हो रहा है...'
+})
 
-    const weatherData = {
-        temperature: '28°C',
-        humidity: '65%',
-        rainfall: '12mm',
-        condition: currentLang === 'en' ? 'Partly Cloudy' : 'आंशिक बादल'
+useEffect(() => {
+  let mounted = true
+
+  async function loadWeather() {
+    try {
+      let lat: number | null = null
+      let lon: number | null = null
+
+      // try to get browser geolocation with a short timeout
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              lat = pos.coords.latitude
+              lon = pos.coords.longitude
+              resolve(true)
+            },
+            () => resolve(true),
+            { timeout: 5000 }
+          )
+        })
+      }
+
+      const params = new URLSearchParams()
+      if (lat && lon) {
+        params.set('lat', String(lat))
+        params.set('lon', String(lon))
+      } else {
+        // fallback city
+        params.set('city', 'New Delhi')
+      }
+
+      const resp = await fetch(`/api/weather?${params.toString()}`)
+      if (!mounted) return
+
+      if (resp.ok) {
+        const json = await resp.json()
+        setWeatherData({
+          temperature: json.temperature ?? '—',
+          humidity: json.humidity ?? '—',
+          rainfall: json.rainfall ?? '—',
+          condition: json.condition ?? (currentLang === 'en' ? 'Unknown' : 'अज्ञात'),
+          city: json.location?.name ?? json.city ?? (currentLang === 'en' ? 'Unknown' : 'अज्ञात')
+        })
+      } else {
+        console.error('Weather fetch error', resp.status)
+      }
+    } catch (err) {
+      console.error('Failed to load weather', err)
     }
+  }
+
+  loadWeather()
+  return () => { mounted = false }
+}, [currentLang])
+
 
     if (!user) {
         return <div>Loading...</div>
@@ -334,28 +392,47 @@ export default function ProducerDashboard() {
                                 </h3>
                             </div>
                             <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {currentLang === 'en' ? 'Temperature' : 'तापमान'}
-                                    </span>
-                                    <span className="text-sm font-medium">{weatherData.temperature}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {currentLang === 'en' ? 'Humidity' : 'आर्द्रता'}
-                                    </span>
-                                    <span className="text-sm font-medium">{weatherData.humidity}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {currentLang === 'en' ? 'Rainfall' : 'वर्षा'}
-                                    </span>
-                                    <span className="text-sm font-medium">{weatherData.rainfall}</span>
-                                </div>
-                                <p className={`text-sm text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {weatherData.condition}
-                                </p>
-                            </div>
+    {/* City Name */}
+    <div className="flex justify-between">
+        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+            {currentLang === 'en' ? 'City' : 'शहर'}
+        </span>
+        <span className="text-sm font-medium">{weatherData.city}</span>
+    </div>
+
+    {/* Temperature */}
+    <div className="flex justify-between">
+        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+            {currentLang === 'en' ? 'Temperature' : 'तापमान'}
+        </span>
+        <span className="text-sm font-medium">{weatherData.temperature}</span>
+    </div>
+
+    {/* Humidity */}
+    <div className="flex justify-between">
+        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+            {currentLang === 'en' ? 'Humidity' : 'आर्द्रता'}
+        </span>
+        <span className="text-sm font-medium">{weatherData.humidity}</span>
+    </div>
+
+    {/* Rainfall */}
+    <div className="flex justify-between">
+        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+            {currentLang === 'en' ? 'Rainfall' : 'वर्षा'}
+        </span>
+        <span className="text-sm font-medium">{weatherData.rainfall}</span>
+    </div>
+
+    {/* Condition */}
+    <div className="flex justify-between">
+        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+            {currentLang === 'en' ? 'Condition' : 'स्थिति'}
+        </span>
+        <span className="text-sm font-medium">{weatherData.condition}</span>
+    </div>
+</div>
+
                         </div>
 
                         {/* Government Information */}
