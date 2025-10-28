@@ -20,7 +20,7 @@ function RegisterContent() {
     const { t, i18n } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
-    const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser, walletExplicitlyConnected } = useWeb3()
+    const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser, walletExplicitlyConnected, provider, signer } = useWeb3()
     const pathname = usePathname()
 
     // Safely navigate to a new path: skip replace if already on the same path,
@@ -76,8 +76,67 @@ function RegisterContent() {
         }
     }, [selectedRole])
 
-    // NOTE: removed automatic redirect on mount. Registration flow will redirect
-    // only after an explicit action (successful register + wallet connect / skip).
+    // Automatic redirect: if a persisted user exists or a connected wallet maps
+    // to a registered profile, navigate to the dashboard immediately.
+    useEffect(() => {
+        if (user) {
+            safeReplace(`/dashboard/${user.role}`)
+            return
+        }
+
+        const tryRedirectFromWallet = async () => {
+            if (!isConnected) return
+
+            try {
+                const saved = localStorage.getItem('krishialok_user')
+                if (saved) {
+                    const parsed = JSON.parse(saved)
+                    if (parsed?.address) {
+                        await safeReplace(`/dashboard/${parsed.role || 'consumer'}`)
+                        return
+                    }
+                }
+            } catch (err) {
+                // ignore
+            }
+
+            try {
+                let addr: string | null = null
+                if (signer) {
+                    try { addr = (await signer.getAddress()).toLowerCase() } catch (e) { addr = null }
+                }
+
+                if (!addr && provider) {
+                    try {
+                        const accounts = await provider.listAccounts()
+                        if (accounts && accounts.length > 0) {
+                            const first: any = accounts[0]
+                            if (typeof first === 'string') {
+                                addr = first.toLowerCase()
+                            } else if (first && typeof first.getAddress === 'function') {
+                                try { addr = (await first.getAddress()).toLowerCase() } catch (e) { /* ignore */ }
+                            } else if (first && (first as any).address) {
+                                addr = String((first as any).address).toLowerCase()
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+
+                if (addr) {
+                    const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
+                    if (res.ok) {
+                        const profile = await res.json()
+                        try { setLocalUser(profile) } catch (e) {}
+                        await safeReplace(`/dashboard/${profile.role}`)
+                    }
+                }
+            } catch (err) {
+                console.error('Auto-redirect (wallet) failed in register:', err)
+            }
+        }
+
+        tryRedirectFromWallet()
+    }, [user, isConnected, provider, signer, setLocalUser])
 
     const roles: Array<{
         id: UserRole

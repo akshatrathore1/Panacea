@@ -89,6 +89,13 @@ export default function ProducerDashboard() {
             color: 'bg-blue-500'
         },
         {
+            title: currentLang === 'en' ? 'List for Sale' : 'बिक्री के लिए सूची',
+            description: currentLang === 'en' ? 'Sell your produce' : 'अपना उत्पाद बेचें',
+            icon: TagIcon,
+            href: '/dashboard/producer/marketplace',
+            color: 'bg-orange-500'
+        },
+        {
             title: currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस',
             description: currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें',
             icon: TagIcon,

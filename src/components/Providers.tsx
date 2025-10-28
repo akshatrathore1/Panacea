@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { ethers } from 'ethers'
 import '@/lib/i18n'
 import type { UserProfile } from '@/types/user'
@@ -84,6 +85,39 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
+    // Keep the in-memory user state in sync with history navigation (back/forward)
+    // and cross-tab localStorage changes. Some browsers or navigation flows can
+    // cause the app to show an earlier state; when that happens rehydrate the
+    // persisted user from localStorage so the UI remains logged-in if a session
+    // is present. This avoids accidental «logged out» UX when the user presses
+    // the browser Back button after signing in.
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+
+        const syncUserFromStorage = () => {
+            try {
+                const saved = localStorage.getItem('krishialok_user')
+                if (saved) {
+                    const parsed = JSON.parse(saved)
+                    setUser(parsed)
+                }
+                // If there's no saved user, do not force-clear the in-memory
+                // user here — explicit logout should be the only way to clear
+                // the session to avoid surprising UX when navigating.
+            } catch (err) {
+                console.error('Failed to sync saved user from storage:', err)
+            }
+        }
+
+        window.addEventListener('popstate', syncUserFromStorage)
+        window.addEventListener('storage', syncUserFromStorage)
+
+        return () => {
+            window.removeEventListener('popstate', syncUserFromStorage)
+            window.removeEventListener('storage', syncUserFromStorage)
+        }
+    }, [])
+
     const connectWallet = async () => {
         if (typeof window === 'undefined' || !window.ethereum) {
             alert('Please install MetaMask!')
@@ -161,7 +195,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         // Allow registration even if wallet is not connected.
         // If a signer is available, use its address. Otherwise, fall back to a phone-derived address.
         let address: string | null = null
-        let activeSigner = signer
+    const activeSigner = signer
 
         // Only attempt to use the signer if the wallet was explicitly connected
         // by the user in this session. This avoids triggering provider prompts
@@ -233,8 +267,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
         walletExplicitlyConnected
     }
 
+    const router = useRouter()
+
+    const handleLogout = () => {
+        disconnectWallet()
+        // Ensure we land on home/login after logout
+        try { router.replace('/') } catch (e) { window.location.href = '/' }
+    }
+
     return (
         <Web3Context.Provider value={value}>
+            {/* Floating logout button shown when a user/profile is present or wallet connected */}
+            {(user || isConnected) && (
+                <div className="fixed top-4 right-4 z-50">
+                    <button
+                        onClick={handleLogout}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md shadow-md text-sm"
+                        aria-label="Logout"
+                    >
+                        Logout
+                    </button>
+                </div>
+            )}
             {children}
         </Web3Context.Provider>
     )

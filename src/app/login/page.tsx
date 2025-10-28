@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -16,7 +16,7 @@ import {
 export default function LoginPage() {
     const { t, i18n } = useTranslation()
     const router = useRouter()
-    const { connectWallet, isConnected, user, isLoading, setLocalUser } = useWeb3()
+    const { connectWallet, isConnected, user, isLoading, setLocalUser, provider, signer } = useWeb3()
 
     const [currentLang, setCurrentLang] = useState('en')
     const [loginMethod, setLoginMethod] = useState<'wallet' | 'phone'>('wallet')
@@ -25,8 +25,72 @@ export default function LoginPage() {
     const [otpSent, setOtpSent] = useState(false)
     
 
-    // NOTE: removed automatic redirect on mount. Users must explicitly log in
-    // (wallet connect or phone OTP) before being redirected to the dashboard.
+    // Automatic redirect: if a persisted user exists or a connected wallet
+    // corresponds to a registered profile, forward straight to the dashboard.
+    useEffect(() => {
+        if (user) {
+            // user already loaded into context -> go to their dashboard
+            try { router.replace(`/dashboard/${user.role}`) } catch (e) { router.push(`/dashboard/${user.role}`) }
+            return
+        }
+
+        const tryRedirectFromWallet = async () => {
+            if (!isConnected) return
+
+            // Check for a cached local profile first
+            try {
+                const saved = localStorage.getItem('krishialok_user')
+                if (saved) {
+                    const parsed = JSON.parse(saved)
+                    if (parsed?.address) {
+                        try { router.replace(`/dashboard/${parsed.role || 'consumer'}`) } catch (e) { router.push(`/dashboard/${parsed.role || 'consumer'}`) }
+                        return
+                    }
+                }
+            } catch (err) {
+                // ignore parse error and continue
+            }
+
+            try {
+                // Attempt to get address from signer/provider without prompting
+                let addr: string | null = null
+                if (signer) {
+                    try { addr = (await signer.getAddress()).toLowerCase() } catch (e) { addr = null }
+                }
+
+                if (!addr && provider) {
+                    try {
+                        const accounts = await provider.listAccounts()
+                        if (accounts && accounts.length > 0) {
+                            const first: any = accounts[0]
+                            if (typeof first === 'string') {
+                                addr = first.toLowerCase()
+                            } else if (first && typeof first.getAddress === 'function') {
+                                try { addr = (await first.getAddress()).toLowerCase() } catch (e) { /* ignore */ }
+                            } else if (first && (first as any).address) {
+                                addr = String((first as any).address).toLowerCase()
+                            }
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+
+                if (addr) {
+                    const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
+                    if (res.ok) {
+                        const profile = await res.json()
+                        try { setLocalUser(profile) } catch (e) {}
+                        try { router.replace(`/dashboard/${profile.role}`) } catch (e) { router.push(`/dashboard/${profile.role}`) }
+                    }
+                }
+            } catch (err) {
+                console.error('Auto-redirect (wallet) failed:', err)
+            }
+        }
+
+        tryRedirectFromWallet()
+    }, [user, isConnected, provider, signer, router, setLocalUser])
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
@@ -45,7 +109,7 @@ export default function LoginPage() {
             if (signer) {
                 // Prefer the context user if present
                 if (user) {
-                    router.push(`/dashboard/${user.role}`)
+                    router.replace(`/dashboard/${user.role}`)
                     return
                 }
 
@@ -55,8 +119,8 @@ export default function LoginPage() {
                     const saved = localStorage.getItem('krishialok_user')
                     if (saved) {
                         const parsed = JSON.parse(saved)
-                        if (parsed?.address) {
-                            router.push(`/dashboard/${parsed.role || 'consumer'}`)
+                            if (parsed?.address) {
+                            router.replace(`/dashboard/${parsed.role || 'consumer'}`)
                             return
                         }
                     }
@@ -65,7 +129,7 @@ export default function LoginPage() {
                 }
 
                 // No profile found - forward user to registration to create one
-                router.push('/register')
+                router.replace('/register')
             }
         } catch (error) {
             console.error('Wallet login failed:', error)
@@ -91,7 +155,7 @@ export default function LoginPage() {
                     const profile = await res.json()
                     // Persist profile into Web3 context so other parts of app see logged-in user
                     setLocalUser(profile)
-                    router.push(`/dashboard/${profile.role}`)
+                    router.replace(`/dashboard/${profile.role}`)
                     return
                 }
 
@@ -106,7 +170,7 @@ export default function LoginPage() {
                 }
                 setLocalUser(fallbackProfile)
                 alert(currentLang === 'en' ? 'Login successful! (Demo)' : 'लॉगिन सफल! (डेमो)')
-                router.push(`/dashboard/${fallbackProfile.role}`)
+                router.replace(`/dashboard/${fallbackProfile.role}`)
             } catch (err) {
                 console.error('Phone login failed:', err)
                 alert(currentLang === 'en' ? 'Login failed' : 'लॉगिन विफल')
