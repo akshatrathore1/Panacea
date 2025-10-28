@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWeb3 } from '@/components/Providers';
 import type { Product } from '@/types/product';
 import PageHeader from '@/components/PageHeader';
-import { PlusCircle, Trash2, Wallet } from 'lucide-react';
+import { PlusCircle, Trash2, Wallet, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function ListForSalePage() {
@@ -30,6 +30,17 @@ export default function ListForSalePage() {
       connectWallet().catch(console.error);
     }
   }, [isConnected, connectWallet]);
+
+  const toggleLanguage = () => {
+    const newLang = lang === 'en' ? 'hi' : 'en';
+    i18n.changeLanguage(newLang);
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('language', newLang);
+        document.documentElement.lang = newLang;
+      }
+    } catch {}
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,20 +105,30 @@ export default function ListForSalePage() {
         title={lang === 'en' ? 'List Product for Sale' : 'बिक्री के लिए उत्पाद सूचीबद्ध करें'}
         backHref="/dashboard/producer"
         actions={
-          <div className="text-sm">
-            {isConnected ? (
-              <span className="inline-flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-md">
-                <Wallet className="h-4 w-4" />
-                {lang === 'en' ? 'Wallet' : 'वॉलेट'}: {user?.name || (lang === 'en' ? 'Connected' : 'कनेक्टेड')}
-              </span>
-            ) : (
-              <button
-                onClick={() => connectWallet()}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                <Wallet className="h-4 w-4" /> {lang === 'en' ? 'Connect Wallet' : 'वॉलेट कनेक्ट करें'}
-              </button>
-            )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleLanguage}
+              data-local-language-toggle
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+            >
+              <Globe className="h-4 w-4" />
+              {lang === 'en' ? 'हिंदी' : 'English'}
+            </button>
+            <div className="text-sm">
+              {isConnected ? (
+                <span className="inline-flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-md">
+                  <Wallet className="h-4 w-4" />
+                  {lang === 'en' ? 'Wallet' : 'वॉलेट'}: {user?.name || (lang === 'en' ? 'Connected' : 'कनेक्टेड')}
+                </span>
+              ) : (
+                <button
+                  onClick={() => connectWallet()}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  <Wallet className="h-4 w-4" /> {lang === 'en' ? 'Connect Wallet' : 'वॉलेट कनेक्ट करें'}
+                </button>
+              )}
+            </div>
           </div>
         }
       />
