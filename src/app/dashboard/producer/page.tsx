@@ -18,6 +18,7 @@ import {
     ArrowRightIcon,
     TagIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 
 export default function ProducerDashboard() {
     const { t, i18n } = useTranslation()
@@ -215,6 +216,7 @@ useEffect(() => {
                         </div>
 
                         <div className="flex gap-6 items-center">
+                            <LogoutButton />
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"

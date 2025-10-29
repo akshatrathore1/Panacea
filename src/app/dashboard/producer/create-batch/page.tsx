@@ -14,6 +14,7 @@ import {
     CloudArrowUpIcon,
     QrCodeIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 
 import { getClientDb } from '../../../../lib/firebase/client'
 import { collection, addDoc } from 'firebase/firestore'
@@ -186,12 +187,15 @@ export default function CreateBatchPage() {
                             </Link>
                         </div>
 
-                        <button
-                            onClick={toggleLanguage}
-                            className="text-gray-600 hover:text-gray-900"
-                        >
-                            {currentLang === 'en' ? 'हिंदी' : 'English'}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <LogoutButton />
+                            <button
+                                onClick={toggleLanguage}
+                                className="text-gray-600 hover:text-gray-900"
+                            >
+                                {currentLang === 'en' ? 'हिंदी' : 'English'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>

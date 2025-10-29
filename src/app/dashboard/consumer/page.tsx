@@ -19,6 +19,7 @@ import {
     AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import LogoutButton from '@/components/LogoutButton'
 
 export default function ConsumerDashboard() {
     const { t, i18n } = useTranslation()
@@ -192,6 +193,7 @@ export default function ConsumerDashboard() {
                                 <BellIcon className="w-6 h-6 text-gray-600" />
                                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
                             </div>
+                            <LogoutButton />
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded-md transition-colors"

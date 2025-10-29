@@ -16,6 +16,7 @@ import {
     ChatBubbleLeftRightIcon,
     HeartIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 import { formatNumber } from '@/lib/format'
 
 export default function MarketplacePage() {
@@ -133,6 +134,7 @@ export default function MarketplacePage() {
                         </Link>
 
                         <div className="flex items-center space-x-4">
+                            <LogoutButton />
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"

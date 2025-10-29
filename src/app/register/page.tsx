@@ -15,6 +15,7 @@ import {
     WalletIcon,
     ArrowLeftIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 
 function RegisterContent() {
     const { t, i18n } = useTranslation()
@@ -293,12 +294,15 @@ function RegisterContent() {
                             </div>
                         </Link>
 
-                        <button
-                            onClick={toggleLanguage}
-                            className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
-                        >
-                            {currentLang === 'en' ? 'हिंदी' : 'English'}
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <LogoutButton />
+                            <button
+                                onClick={toggleLanguage}
+                                className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
+                            >
+                                {currentLang === 'en' ? 'हिंदी' : 'English'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>

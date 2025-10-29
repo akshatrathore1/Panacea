@@ -15,6 +15,7 @@ import {
     MapPinIcon,
     PhoneIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 import { formatNumber } from '@/lib/format'
 
 export default function IntermediaryDashboard() {
@@ -136,12 +137,15 @@ export default function IntermediaryDashboard() {
                             </div>
                         </div>
 
-                        <button
-                            onClick={toggleLanguage}
-                            className="flex items-center space-x-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition-colors"
-                        >
-                            <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <LogoutButton />
+                            <button
+                                onClick={toggleLanguage}
+                                className="flex items-center space-x-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition-colors"
+                            >
+                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
+                            </button>
+                        </div>
                         {/* Marketplace link removed from header; shown as a quick-action card in the sidebar below */}
                     </div>
                 </div>

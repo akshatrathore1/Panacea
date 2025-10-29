@@ -277,18 +277,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <Web3Context.Provider value={value}>
-            {/* Floating logout button shown when a user/profile is present or wallet connected */}
-            {(user || isConnected) && (
-                <div className="fixed top-4 right-4 z-50">
-                    <button
-                        onClick={handleLogout}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md shadow-md text-sm"
-                        aria-label="Logout"
-                    >
-                        Logout
-                    </button>
-                </div>
-            )}
             {children}
         </Web3Context.Provider>
     )

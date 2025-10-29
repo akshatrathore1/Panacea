@@ -18,6 +18,7 @@ import {
     DocumentTextIcon,
     PhotoIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 import { formatNumber } from '@/lib/format'
 
 export default function TracePage() {
@@ -197,13 +198,16 @@ export default function TracePage() {
                             </span>
                         </Link>
 
-                        <button
-                            onClick={toggleLanguage}
-                            className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
-                        >
-                            <GlobeAltIcon className="w-5 h-5" />
-                            <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                        </button>
+                        <div className="flex items-center space-x-3">
+                            <LogoutButton />
+                            <button
+                                onClick={toggleLanguage}
+                                className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
+                            >
+                                <GlobeAltIcon className="w-5 h-5" />
+                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>

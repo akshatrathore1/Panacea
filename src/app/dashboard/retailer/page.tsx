@@ -18,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { formatNumber } from '@/lib/format'
 import Link from 'next/link'
+import LogoutButton from '@/components/LogoutButton'
 
 export default function RetailerDashboard() {
     const { t, i18n } = useTranslation()
@@ -161,12 +162,15 @@ export default function RetailerDashboard() {
                             </div>
                         </div>
 
-                        <button
-                            onClick={toggleLanguage}
-                            className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-md transition-colors"
-                        >
-                            <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <LogoutButton />
+                            <button
+                                onClick={toggleLanguage}
+                                className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-md transition-colors"
+                            >
+                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>

@@ -12,6 +12,7 @@ import {
     ArrowLeftIcon,
     GlobeAltIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 
 export default function LoginPage() {
     const { t, i18n } = useTranslation()
@@ -196,13 +197,16 @@ export default function LoginPage() {
                             </div>
                         </Link>
 
-                        <button
-                            onClick={toggleLanguage}
-                            className="flex items-center space-x-1 bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
-                        >
-                            <GlobeAltIcon className="w-4 h-4" />
-                            <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <LogoutButton />
+                            <button
+                                onClick={toggleLanguage}
+                                className="flex items-center space-x-1 bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
+                            >
+                                <GlobeAltIcon className="w-4 h-4" />
+                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>

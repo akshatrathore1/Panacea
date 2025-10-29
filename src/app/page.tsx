@@ -12,6 +12,7 @@ import {
     QrCodeIcon,
     ArrowRightIcon
 } from '@heroicons/react/24/outline'
+import LogoutButton from '@/components/LogoutButton'
 
 export default function HomePage() {
     const { t, i18n } = useTranslation()
@@ -110,6 +111,7 @@ export default function HomePage() {
                         </div>
 
                         <div className="flex items-center space-x-4">
+                            <LogoutButton />
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-md transition-colors"
