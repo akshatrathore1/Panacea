@@ -6,6 +6,8 @@ export interface UserProfile {
     name: string
     phone: string
     location?: string
+    // optional provider that created/owns this profile (e.g. 'metamask', 'phone')
+    provider?: string
     verified: boolean
     createdAt?: string
     updatedAt?: string
@@ -17,5 +19,7 @@ export interface UserRegistrationPayload {
     name: string
     phone: string
     location?: string
+    // optional: indicate how the user registered (e.g. 'metamask', 'phone')
+    provider?: string
     verified?: boolean
 }

@@ -44,7 +44,7 @@ export default function MarketplacePage() {
         async function fetchListings() {
             try {
                 const { getClientDb } = await import('../../lib/firebase/client')
-                const { collection, getDocs, query, orderBy } = await import('firebase/firestore')
+                const { collection, getDocs, query, orderBy, doc, getDoc } = await import('firebase/firestore')
                 const db = getClientDb()
                 const batchesCol = collection(db, 'batches')
                 const q = query(batchesCol, orderBy('postedDate', 'desc'))
@@ -53,7 +53,29 @@ export default function MarketplacePage() {
                 snapshot.forEach(doc => {
                     items.push({ id: doc.id, ...(doc.data() as any) })
                 })
-                if (mounted) setListings(items)
+                // Resolve farmer names from the users collection when the stored
+                // farmerName looks like an Ethereum address (so we can display a
+                // human-friendly name even when producer saved an address).
+                const resolved = await Promise.all(items.map(async (it) => {
+                    try {
+                        const candidate = String(it.farmerName || it.farmerAddress || '')
+                        if (/^0x[a-f0-9]{40}$/i.test(candidate)) {
+                            const userRef = doc(db, 'users', candidate.trim().toLowerCase())
+                            const userSnap = await getDoc(userRef)
+                            if (userSnap.exists()) {
+                                const data = userSnap.data() as any
+                                // Prefer the registered user's name
+                                return { ...it, farmerName: data.name || it.farmerName }
+                            }
+                        }
+                    } catch (err) {
+                        // ignore per-list failures and return original listing
+                        console.warn('Failed to resolve farmer name for listing', it.id, err)
+                    }
+                    return it
+                }))
+
+                if (mounted) setListings(resolved)
             } catch (err) {
                 console.warn('Failed to load marketplace listings:', err)
             } finally {
@@ -247,10 +269,16 @@ export default function MarketplacePage() {
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredListings.map((listing) => (
                         <div key={listing.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-shadow">
-                            {/* Image */}
+                            {/* Image (use uploaded image if available; fall back to placeholder) */}
                             <div className="relative">
-                                <div className="aspect-video bg-gray-100 rounded-t-xl flex items-center justify-center">
-                                    <TagIcon className="w-12 h-12 text-gray-400" />
+                                <div className="aspect-video bg-gray-100 rounded-t-xl flex items-center justify-center overflow-hidden">
+                                    {listing.images && listing.images.length > 0 ? (
+                                        // Listing images may be stored as URLs in Firestore; render the first one
+                                        // Use simple img tag to avoid Next/Image optimizations on unknown remote hosts.
+                                        <img src={String(listing.images[0])} alt={listing.variety || listing.cropType} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <TagIcon className="w-12 h-12 text-gray-400" />
+                                    )}
                                 </div>
                                 {listing.organic && (
                                     <div className="absolute top-3 left-3">
@@ -279,13 +307,17 @@ export default function MarketplacePage() {
                                         <p className="text-sm text-gray-600">{listing.variety}</p>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${listing.qualityGrade === 'Premium' || listing.qualityGrade === 'A'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                            {listing.qualityGrade}
-                                        </span>
-                                    </div>
+                                            {/* Show seller name here so buyers can identify the seller */}
+                                            <div className="text-sm text-gray-700 font-medium">{listing.farmerName || listing.name || listing.batchId || listing.id}</div>
+                                            <div className="mt-1">
+                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${listing.qualityGrade === 'Premium' || listing.qualityGrade === 'A'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    {listing.qualityGrade}
+                                                </span>
+                                            </div>
+                                        </div>
                                 </div>
 
                                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{listing.description}</p>

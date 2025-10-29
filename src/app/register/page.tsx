@@ -28,24 +28,17 @@ function RegisterContent() {
     // otherwise attempt replace and fall back to push if replace doesn't take effect.
     const safeReplace = async (target: string) => {
         try {
-            if (typeof window !== 'undefined' && window.location.pathname.startsWith(target)) {
-                // Already at or under the target path — no navigation needed
-                return
-            }
-
+            // Use router.replace and rely on Next's navigation handling.
+            // If it throws for any reason, fall back to router.push, and
+            // as a last resort use window.location.href.
             await router.replace(target)
-            // short delay to let the router settle; if it didn't navigate, force push
-            await new Promise((res) => setTimeout(res, 200))
-            if (typeof window !== 'undefined' && !window.location.pathname.startsWith(target)) {
-                console.warn('router.replace did not navigate, forcing push.')
-                router.push(target)
-            }
         } catch (err) {
             console.error('Navigation error (safeReplace):', err)
             try {
                 router.push(target)
             } catch (pushErr) {
                 console.error('Fallback push failed:', pushErr)
+                try { window.location.href = target } catch (e) { /* final fallback ignored */ }
             }
         }
     }
@@ -124,12 +117,11 @@ function RegisterContent() {
                 }
 
                 if (addr) {
-                    const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
-                    if (res.ok) {
-                        const profile = await res.json()
-                        try { setLocalUser(profile) } catch (e) {}
-                        await safeReplace(`/dashboard/${profile.role}`)
-                    }
+                    // For the registration flow we avoid calling the server here
+                    // to prevent a 404 network response when the wallet isn't
+                    // yet registered. We already checked localStorage above; if
+                    // no profile was found, allow the user to connect MetaMask
+                    // and complete registration explicitly.
                 }
             } catch (err) {
                 console.error('Auto-redirect (wallet) failed in register:', err)
@@ -212,7 +204,7 @@ function RegisterContent() {
             return
         }
 
-        if (otp === '123456') { // Simulate OTP verification
+                if (otp === '123456') { // Simulate OTP verification
             // If consumer, skip wallet step and register immediately
             if (selectedRole === 'consumer') {
                 try {
@@ -220,7 +212,9 @@ function RegisterContent() {
                     const saved = await registerUser({
                         role: selectedRole as UserRole,
                         name: formData.name,
-                        phone: formData.phone
+                        phone: formData.phone,
+                        // consumer registering without wallet: mark provider as phone
+                        provider: 'phone'
                     })
                     console.log('Registered consumer, saved profile:', saved)
                     // Ensure context/localStorage is set (registerUser persists, but call setLocalUser to be explicit)
@@ -244,7 +238,10 @@ function RegisterContent() {
 
     const handleWalletConnect = async () => {
         try {
-            const signer = await connectWallet()
+            // During registration we allow connecting an unregistered wallet so
+            // the user can complete registration using MetaMask. Pass `false` to
+            // indicate an existing Firestore user is not required.
+            const signer = await connectWallet(false)
             // Validate required fields (role, name, phone) before calling register API
             if (!selectedRole) {
                 alert(currentLang === 'en' ? 'Please select a role first' : 'कृपया पहले एक भूमिका चुनें')
@@ -256,11 +253,22 @@ function RegisterContent() {
             }
 
             if (signer) {
+                // Read the connected wallet address directly from the signer and
+                // pass it to the register API to avoid any race with provider
+                // state updates in the context.
+                let walletAddr: string | null = null
+                try {
+                    walletAddr = (await signer.getAddress()).toLowerCase()
+                } catch (e) {
+                    console.warn('Could not read address from signer after connect:', e)
+                }
+
                 const saved = await registerUser({
                     role: selectedRole,
                     name: formData.name,
-                    phone: formData.phone
-                })
+                    phone: formData.phone,
+                    provider: 'metamask'
+                }, walletAddr ?? undefined)
 
                 // Ensure local context/localStorage updated and then navigate to dashboard
                 try { setLocalUser(saved) } catch (e) { /* ignore */ }
@@ -567,7 +575,9 @@ function RegisterContent() {
                                                             const saved = await registerUser({
                                                                 role: selectedRole as UserRole,
                                                                 name: formData.name,
-                                                                phone: formData.phone
+                                                                phone: formData.phone,
+                                                                // user chose to skip wallet: persist as phone-based registration
+                                                                provider: 'phone'
                                                             })
                                                             // Use role returned by server (saved profile) to redirect reliably
                                                             console.log('Registered (skip) saved profile:', saved)

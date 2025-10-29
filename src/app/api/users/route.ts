@@ -29,6 +29,8 @@ const serializeUser = (docData: DocumentData, address: string): UserProfile => (
     name: docData.name,
     phone: docData.phone,
     location: docData.location,
+    // provider indicates how this user was created (e.g. 'metamask' or 'phone')
+    provider: docData.provider,
     verified: Boolean(docData.verified),
     createdAt: formatTimestamp(docData.createdAt),
     updatedAt: formatTimestamp(docData.updatedAt)
@@ -63,15 +65,16 @@ export async function POST(request: NextRequest) {
         const body = (await request.json()) as Partial<UserRegistrationPayload>
 
         // Allow missing address for users who don't have a wallet (e.g., consumers).
-        // Make `location` optional on the API side — default to empty string when absent.
-        if (!body.role || !body.name || !body.phone) {
-            return NextResponse.json({ error: 'role, name, and phone are required' }, { status: 400 })
+        // Make `location` and `phone` optional on the API side — default to empty string when absent.
+        // Require at least role and name so we can create minimal wallet-backed profiles.
+        if (!body.role || !body.name) {
+            return NextResponse.json({ error: 'role and name are required' }, { status: 400 })
         }
 
         let inputAddress = body.address
         if (!inputAddress) {
             // Use a phone-derived id to avoid requiring MetaMask for consumers
-            inputAddress = `phone:${body.phone}`
+            inputAddress = `phone:${body.phone || ''}`
         }
 
         const normalized = normalizeAddress(inputAddress)
@@ -80,13 +83,20 @@ export async function POST(request: NextRequest) {
         const existing = await docRef.get()
 
         const now = Timestamp.now()
-        const payload = {
+
+        // Detect whether this looks like an Ethereum address (0x prefixed, 40 hex chars)
+        const isEthAddress = /^0x[a-f0-9]{40}$/i.test(normalized)
+
+        const payload: Record<string, unknown> = {
             address: normalized,
             role: body.role,
             name: body.name,
-            phone: body.phone,
+            // default phone to empty string when absent
+            phone: body.phone || '',
             // default missing location to empty string for backward compatibility
             location: body.location || '',
+            // persist provider if supplied by client or derive from address type
+            provider: body.provider || (isEthAddress ? 'metamask' : 'phone'),
             verified: Boolean(body.verified),
             updatedAt: now,
             createdAt: existing.exists ? existing.data()?.createdAt ?? now : now

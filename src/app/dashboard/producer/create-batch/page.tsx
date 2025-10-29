@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
 
-import { getClientDb } from '../../../../lib/firebase/client'
+import { getClientDb, getClientApp } from '../../../../lib/firebase/client'
 import { collection, addDoc } from 'firebase/firestore'
 import { ethers } from 'ethers'
 import { blockchainHelpers } from '../../../../lib/blockchain'
@@ -133,6 +133,26 @@ export default function CreateBatchPage() {
                     }
                 }
 
+                // Upload images to Firebase Storage (if any) and collect download URLs
+                let uploadedUrls: string[] = []
+                if (formData.images && formData.images.length > 0) {
+                    try {
+                        const { getStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage')
+                        const app = getClientApp()
+                        const storage = getStorage(app)
+                        for (const file of formData.images) {
+                            const safeName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+                            const fileRef = ref(storage, `batches/${batchId}/${safeName}`)
+                            await uploadBytes(fileRef, file)
+                            const url = await getDownloadURL(fileRef)
+                            uploadedUrls.push(url)
+                        }
+                    } catch (uploadErr) {
+                        console.warn('Image upload failed (continuing without images):', uploadErr)
+                        uploadedUrls = []
+                    }
+                }
+
                 await addDoc(batchesCol, {
                     batchId,
                     cropType: formData.cropType,
@@ -145,7 +165,7 @@ export default function CreateBatchPage() {
                     farmerName: producerAddress || 'Producer',
                     farmerPhone: '',
                     postedDate: new Date().toISOString(),
-                    images: [],
+                    images: uploadedUrls,
                     verified: false,
                     organic: formData.organicCertified || false,
                     description: '',

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
+import Toast from '@/components/Toast'
 import type { UserProfile, UserRole } from '@/types/user'
 import {
     WalletIcon,
@@ -99,41 +100,82 @@ export default function LoginPage() {
         i18n.changeLanguage(newLang)
     }
 
+    const [toastMessage, setToastMessage] = useState<string | null>(null)
+    const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info')
+
+    const showToast = (msg: string, type: 'info' | 'success' | 'error' = 'info') => {
+        setToastMessage(msg)
+        setToastType(type)
+        // auto-dismiss after 4s
+        setTimeout(() => {
+            setToastMessage(null)
+        }, 4000)
+    }
+
     const handleWalletLogin = async () => {
         try {
-            const signer = await connectWallet()
+            // Connect but do not require a registered user here; we will check
+            // Firestore ourselves and show an inline toast if not found.
+            const signer = await connectWallet(false)
 
-            // After connecting the wallet, if a user profile exists in the Web3
-            // context or in localStorage, redirect them to the appropriate
-            // dashboard. Otherwise send them to registration so they can create
-            // a profile for this wallet address.
-            if (signer) {
-                // Prefer the context user if present
-                if (user) {
-                    router.replace(`/dashboard/${user.role}`)
+            if (!signer) {
+                showToast(currentLang === 'en' ? 'Failed to connect MetaMask' : 'MetaMask से कनेक्ट असफल', 'error')
+                return
+            }
+
+            // Prefer the context user if present
+            if (user) {
+                router.replace(`/dashboard/${user.role}`)
+                return
+            }
+
+            // Fallback: check persisted local user that may have been loaded by the provider earlier
+            try {
+                const saved = localStorage.getItem('krishialok_user')
+                if (saved) {
+                    const parsed = JSON.parse(saved)
+                    if (parsed?.address) {
+                        router.replace(`/dashboard/${parsed.role || 'consumer'}`)
+                        return
+                    }
+                }
+            } catch (err) {
+                // ignore parse errors and continue
+            }
+
+            // Read the address from the signer and query the server explicitly
+            let addr: string | null = null
+            try { addr = (await signer.getAddress()).toLowerCase() } catch (e) { addr = null }
+            if (!addr) {
+                showToast(currentLang === 'en' ? 'Unable to read wallet address' : 'वॉलेट पता पढ़ने में असमर्थ', 'error')
+                return
+            }
+
+            try {
+                const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
+                if (res.ok) {
+                    const profile = await res.json()
+                    try { setLocalUser(profile) } catch (e) {}
+                    router.replace(`/dashboard/${profile.role}`)
                     return
                 }
 
-                // Fallback: check persisted local user that may have been
-                // loaded by the provider earlier
-                try {
-                    const saved = localStorage.getItem('krishialok_user')
-                    if (saved) {
-                        const parsed = JSON.parse(saved)
-                            if (parsed?.address) {
-                            router.replace(`/dashboard/${parsed.role || 'consumer'}`)
-                            return
-                        }
-                    }
-                } catch (err) {
-                    // ignore parse errors and fall through to registration
+                if (res.status === 404) {
+                    // Show a friendly toast instead of an alert
+                    showToast(currentLang === 'en' ? 'MetaMask address not registered. Please sign up first.' : 'MetaMask पता पंजीकृत नहीं है। कृपया पहले साइन अप करें।', 'error')
+                    // forward to registration after a short delay if you want; keep user on page for now
+                    return
                 }
 
-                // No profile found - forward user to registration to create one
-                router.replace('/register')
+                // Other non-ok responses
+                showToast(currentLang === 'en' ? 'Failed to check user profile' : 'उपयोगकर्ता प्रोफ़ाइल की जाँच असफल', 'error')
+            } catch (err) {
+                console.error('Wallet login fetch failed:', err)
+                showToast(currentLang === 'en' ? 'Network error while checking profile' : 'प्रोफ़ाइल जांचते समय नेटवर्क त्रुटि', 'error')
             }
         } catch (error) {
             console.error('Wallet login failed:', error)
+            showToast(currentLang === 'en' ? 'Wallet login failed' : 'वॉलेट लॉगिन विफल', 'error')
         }
     }
 
@@ -160,21 +202,17 @@ export default function LoginPage() {
                     return
                 }
 
-                // If user not found, create a minimal consumer-like session locally
-                const fallbackProfile: UserProfile = {
-                    address: phoneAddr,
-                    role: 'consumer' as UserRole,
-                    name: phoneNumber,
-                    phone: phoneNumber,
-                    location: '',
-                    verified: false
+                if (res.status === 404) {
+                    // Show a toast to match wallet login UX when profile isn't found
+                    showToast(currentLang === 'en' ? 'Phone number not registered. Please sign up.' : 'फोन नंबर पंजीकृत नहीं है। कृपया पहले साइन अप करें।', 'error')
+                    return
                 }
-                setLocalUser(fallbackProfile)
-                alert(currentLang === 'en' ? 'Login successful! (Demo)' : 'लॉगिन सफल! (डेमो)')
-                router.replace(`/dashboard/${fallbackProfile.role}`)
+
+                // Other non-ok responses
+                showToast(currentLang === 'en' ? 'Failed to check user profile' : 'उपयोगकर्ता प्रोफ़ाइल की जाँच असफल', 'error')
             } catch (err) {
                 console.error('Phone login failed:', err)
-                alert(currentLang === 'en' ? 'Login failed' : 'लॉगिन विफल')
+                showToast(currentLang === 'en' ? 'Login failed' : 'लॉगिन विफल', 'error')
             }
         } else {
             alert(currentLang === 'en' ? 'Invalid OTP. Use 123456 for demo.' : 'अमान्य OTP। डेमो के लिए 123456 का उपयोग करें।')
@@ -212,6 +250,9 @@ export default function LoginPage() {
             </header>
 
             <div className="flex items-center justify-center min-h-[calc(100vh-80px)] py-12 px-4 sm:px-6 lg:px-8">
+                {toastMessage && (
+                    <Toast message={toastMessage} type={toastType} onClose={() => setToastMessage(null)} />
+                )}
                 <div className="max-w-md w-full space-y-8">
                     {/* Logo and Title */}
                     <div className="text-center">

@@ -13,9 +13,15 @@ interface Web3ContextType {
     user: UserProfile | null
     isConnected: boolean
     isLoading: boolean
-    connectWallet: () => Promise<ethers.JsonRpcSigner | null>
+    // if `requireRegistered` is true (default) connectWallet only succeeds when
+    // a Firestore user document exists for the connected wallet (used by Login).
+    // If false, connectWallet will establish a signer even if there's no user yet
+    // (used by Register flow before calling registerUser).
+    connectWallet: (requireRegistered?: boolean) => Promise<ethers.JsonRpcSigner | null>
     disconnectWallet: () => void
-    registerUser: (userData: Omit<UserProfile, 'address' | 'verified'>) => Promise<UserProfile>
+    // `explicitAddress` may be provided by callers (e.g. the Register page)
+    // to avoid races reading provider state immediately after connecting.
+    registerUser: (userData: Omit<UserProfile, 'address' | 'verified'>, explicitAddress?: string | undefined) => Promise<UserProfile>
     // Persist a user profile into the context/localStorage (used for phone-only sign-in)
     setLocalUser: (profile: UserProfile) => void
     // Whether the wallet was explicitly connected by the user during this session
@@ -35,6 +41,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // (clicking Connect). We avoid using the signer automatically if accounts were
     // merely detected on page load to prevent any MetaMask prompts.
     const [walletExplicitlyConnected, setWalletExplicitlyConnected] = useState(false)
+
+    const router = useRouter()
 
     const persistUser = (profile: UserProfile) => {
         setUser(profile)
@@ -118,7 +126,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }
     }, [])
 
-    const connectWallet = async () => {
+    const connectWallet = async (requireRegistered = true) => {
         if (typeof window === 'undefined' || !window.ethereum) {
             alert('Please install MetaMask!')
             return null
@@ -142,29 +150,68 @@ export function Providers({ children }: { children: React.ReactNode }) {
             setSigner(web3Signer)
             setIsConnected(true)
             setWalletExplicitlyConnected(true)
+            // If caller requires a registered user (login flow) we must verify
+            // the wallet exists in Firestore. If requireRegistered is false
+            // (register flow) allow connecting even when there is no server doc.
+            if (requireRegistered) {
+                try {
+                    const response = await fetch(`/api/users?address=${walletAddress}`)
+                    if (response.ok) {
+                        const profile = (await response.json()) as UserProfile
+                        persistUser(profile)
+                        // After successful MetaMask login, go to role-specific dashboard
+                        try {
+                            router.replace(`/dashboard/${profile.role || 'consumer'}`)
+                        } catch (e) {
+                            // Fallback if router.replace isn't available for some reason
+                            window.location.href = `/dashboard/${profile.role || 'consumer'}`
+                        }
 
-            try {
-                const response = await fetch(`/api/users?address=${walletAddress}`)
-                if (response.ok) {
-                    const profile = (await response.json()) as UserProfile
-                    persistUser(profile)
-                    return web3Signer
+                        return web3Signer
+                    }
+
+                    // If the server responded 404 the wallet hasn't been registered yet
+                    if (response.status === 404) {
+                        // Clear signer/connection because we won't treat this as a successful login
+                        setSigner(null)
+                        setIsConnected(false)
+                        alert('MetaMask address is not registered. Please register using MetaMask or sign up with phone.')
+                        return null
+                    }
+                } catch (fetchErr) {
+                    console.error('Failed to load user profile from API:', fetchErr)
+                    // continue to check local cache as a fallback
                 }
-            } catch (fetchErr) {
-                console.error('Failed to load user profile from API:', fetchErr)
             }
 
+            // Check for a cached local profile that matches this wallet
             const savedUser = localStorage.getItem('krishialok_user')
             if (savedUser) {
                 try {
                     const parsed = JSON.parse(savedUser) as UserProfile
                     if (parsed.address.toLowerCase() === walletAddress) {
                         setUser(parsed)
+                        try {
+                            router.replace(`/dashboard/${parsed.role || 'consumer'}`)
+                        } catch (e) {
+                            window.location.href = `/dashboard/${parsed.role || 'consumer'}`
+                        }
+                        return web3Signer
                     }
                 } catch (error) {
                     console.error('Failed to parse cached user profile:', error)
                     localStorage.removeItem('krishialok_user')
                 }
+            }
+
+            // No server profile and no matching local profile: if caller required a registered
+            // user, inform the user. Otherwise (register flow) return the signer so
+            // the caller can complete registration.
+            if (requireRegistered) {
+                setSigner(null)
+                setIsConnected(false)
+                alert('MetaMask address is not registered. Please register first.')
+                return null
             }
 
             return web3Signer
@@ -191,16 +238,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('krishialok_user')
     }
 
-    const registerUser = async (userData: Omit<UserProfile, 'address' | 'verified'>) => {
+    const registerUser = async (userData: Omit<UserProfile, 'address' | 'verified'>, explicitAddress?: string | undefined) => {
         // Allow registration even if wallet is not connected.
         // If a signer is available, use its address. Otherwise, fall back to a phone-derived address.
         let address: string | null = null
-    const activeSigner = signer
+        const activeSigner = signer
+
+        // If caller supplied an explicit address (from the signer right after connect), prefer it.
+        if (explicitAddress) {
+            address = explicitAddress
+        }
 
         // Only attempt to use the signer if the wallet was explicitly connected
         // by the user in this session. This avoids triggering provider prompts
         // when a persisted user or detected accounts exist.
-        if (walletExplicitlyConnected && activeSigner) {
+        if (!address && walletExplicitlyConnected && activeSigner) {
             try {
                 address = (await activeSigner.getAddress()).toLowerCase()
             } catch (err) {
@@ -223,6 +275,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         try {
             setIsLoading(true)
 
+            // If this registration is for an Ethereum address, mark provider='metamask'
+            const isEthAddress = typeof address === 'string' && /^0x[a-f0-9]{40}$/i.test(address)
+
             const response = await fetch('/api/users', {
                 method: 'POST',
                 headers: {
@@ -231,6 +286,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 body: JSON.stringify({
                     ...userData,
                     address,
+                    provider: isEthAddress ? 'metamask' : (userData.provider ?? undefined),
                     verified: false
                 })
             })
@@ -266,9 +322,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         ,
         walletExplicitlyConnected
     }
-
-    const router = useRouter()
-
+    
     const handleLogout = () => {
         disconnectWallet()
         // Ensure we land on home/login after logout
