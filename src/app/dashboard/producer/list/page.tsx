@@ -66,10 +66,19 @@ export default function ListForSalePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Will hold a signer returned by connectWallet(false) if we call it below
+    let web3Signer: any = null
+
     // Check wallet and registration
     if (!isConnected) {
       try {
-        await connectWallet()
+        // Allow connecting the wallet even if the address is not yet registered
+        // — producers should be able to list with a connected wallet and then
+        // register later if needed. Passing `false` prevents connectWallet
+        // from requiring a server-side user doc.
+        // Use the returned signer to avoid relying on stale `signer` state in
+        // the same render cycle.
+  web3Signer = await connectWallet(false)
       } catch (err) {
         alert(
           currentLang === 'en'
@@ -80,16 +89,23 @@ export default function ListForSalePage() {
       }
     }
 
-    if (!user) {
-      router.push('/register') // Redirect to registration if no user profile
+    // Allow listing when a wallet signer exists even if there's no registered
+    // user profile (phone-only users will have `user` but wallet users may not).
+    // If neither a user nor a signer is available, require registration.
+    // Prefer the signer returned from connectWallet (if we called it above),
+    // otherwise fall back to the context `signer`.
+    const activeSigner = typeof web3Signer !== 'undefined' && web3Signer ? web3Signer : signer
+    if (!user && !activeSigner) {
+      router.push('/register') // Redirect to registration if no user profile or signer
       return
     }
 
     setIsSubmitting(true)
     try {
+      const producerAddress = activeSigner ? await activeSigner.getAddress() : user?.address || 'unknown'
       const producer = {
-        address: signer ? (await signer.getAddress()) : user.address,
-        name: user.name || 'Anonymous Producer'
+        address: producerAddress,
+        name: user?.name || 'Anonymous Producer'
       }
 
       const payload = {
@@ -113,13 +129,26 @@ export default function ListForSalePage() {
       console.log('API response status', res.status)
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown' }))
-        throw new Error(
-          err.error || (currentLang === 'en' ? 'Failed to save product' : 'उत्पाद सहेजने में विफल')
-        )
+        // Attempt to read error details from response body
+        let errBody = null
+        try {
+          errBody = await res.json()
+        } catch (_e) {
+          try { errBody = await res.text() } catch { errBody = null }
+        }
+        console.error('Marketplace POST failed:', res.status, errBody)
+        alert((currentLang === 'en' ? 'Failed to list product: ' : 'उत्पाद सूचीबद्ध करने में विफल: ') + (errBody?.error || errBody || res.status))
+        return
       }
 
-      // navigate to marketplace to see listing
+      // Success: inform user and navigate to marketplace to see listing
+      try {
+        const created = await res.json()
+        alert(currentLang === 'en' ? 'Product listed successfully!' : 'उत्पाद सफलतापूर्वक सूचीबद्ध किया गया!')
+        console.log('Created marketplace product:', created)
+      } catch (e) {
+        console.log('Product created, but response JSON parse failed', e)
+      }
       router.push('/dashboard/marketplace')
     } catch (err) {
       console.error('Submit error:', err)

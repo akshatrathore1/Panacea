@@ -171,6 +171,38 @@ export default function CreateBatchPage() {
                     description: '',
                     distance: ''
                 })
+                // Also index this listing in the marketplace API/collection so it
+                // appears in unified marketplace views that read from
+                // /api/marketplace/products (server-side collection)
+                try {
+                    const productPayload = {
+                        name: `${formData.cropType} - ${formData.variety}`,
+                        quantity: Number(formData.weight) || 0,
+                        unit: 'kg',
+                        price: Number(formData.pricePerKg) || 0,
+                        description: formData.variety || '',
+                        category: formData.cropType || 'uncategorized',
+                        harvestDate: formData.harvestDate || null,
+                        producer: producerAddress || 'unknown',
+                        images: uploadedUrls || []
+                    }
+
+                    // best-effort: notify server to create marketplace product
+                    const resp = await fetch('/api/marketplace/products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(productPayload)
+                    })
+
+                    if (!resp.ok) {
+                        console.warn('Failed to index product in marketplace API', await resp.text())
+                    } else {
+                        const json = await resp.json()
+                        console.log('Indexed product in marketplace:', json.id)
+                    }
+                } catch (indexErr) {
+                    console.warn('Marketplace indexing failed (continuing):', indexErr)
+                }
             } catch (dbErr) {
                 console.warn('Failed to save batch to Firestore:', dbErr)
             }

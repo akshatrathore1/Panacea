@@ -96,13 +96,7 @@ export default function ProducerDashboard() {
             href: '/dashboard/producer/list',
             color: 'bg-orange-500'
         },
-        {
-            title: currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस',
-            description: currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें',
-            icon: TagIcon,
-            href: '/marketplace',
-            color: 'bg-orange-500'
-        },
+        // Marketplace moved to sidebar to improve layout and focus of quick actions
         {
             title: currentLang === 'en' ? 'Analytics' : 'विश्लेषण',
             description: currentLang === 'en' ? 'View sales data' : 'बिक्री डेटा देखें',
@@ -220,7 +214,6 @@ useEffect(() => {
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
-                                data-local-language-toggle
                             >
                                 <GlobeAltIcon className="w-5 h-5" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
@@ -297,7 +290,7 @@ useEffect(() => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Quick Actions */}
                     <div className="lg:col-span-2">
                         <h2 className={`text-xl font-semibold mb-4 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -445,8 +438,24 @@ useEffect(() => {
 
                         </div>
 
-                        {/* Government Information */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border">
+                                                {/* Marketplace Quick Card (moved from quick actions) */}
+                                                <div className="bg-white p-6 rounded-lg shadow-sm border mb-4">
+                                                    <div className="flex items-center mb-4">
+                                                        <TagIcon className="w-6 h-6 text-orange-600 mr-2" />
+                                                        <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                            {currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}
+                                                        </h3>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600 mb-4">
+                                                        {currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें'}
+                                                    </p>
+                                                    <Link href="/marketplace" className="inline-flex items-center justify-center w-full rounded-lg bg-orange-500 px-4 py-2 text-white hover:bg-orange-600">
+                                                        {currentLang === 'en' ? 'Open Marketplace' : 'मार्केटप्लेस खोलें'}
+                                                    </Link>
+                                                </div>
+
+                                                {/* Government Information */}
+                                                <div className="bg-white p-6 rounded-lg shadow-sm border">
                             <div className="flex items-center mb-4">
                                 <BanknotesIcon className="w-6 h-6 text-green-600 mr-2" />
                                 <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>

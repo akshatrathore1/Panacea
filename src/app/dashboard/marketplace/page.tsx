@@ -33,7 +33,8 @@ export default function MarketplacePage() {
         i18n.changeLanguage(newLang)
     }
 
-    // Listings state (loaded from Firestore 'batches' collection)
+    // Listings state (loaded from the marketplace API which stores
+    // 'marketplace_products' created by the List-for-sale flow)
     const [listings, setListings] = useState<any[]>([])
     const [isLoadingListings, setIsLoadingListings] = useState(true)
 
@@ -42,39 +43,36 @@ export default function MarketplacePage() {
 
         async function fetchListings() {
             try {
-                const { getClientDb } = await import('../../lib/firebase/client')
-                const { collection, getDocs, query, orderBy, doc, getDoc } = await import('firebase/firestore')
-                const db = getClientDb()
-                const batchesCol = collection(db, 'batches')
-                const q = query(batchesCol, orderBy('postedDate', 'desc'))
-                const snapshot = await getDocs(q)
-                const items: any[] = []
-                snapshot.forEach(doc => {
-                    items.push({ id: doc.id, ...(doc.data() as any) })
-                })
-                // Resolve farmer names from the users collection when the stored
-                // farmerName looks like an Ethereum address (so we can display a
-                // human-friendly name even when producer saved an address).
-                const resolved = await Promise.all(items.map(async (it) => {
-                    try {
-                        const candidate = String(it.farmerName || it.farmerAddress || '')
-                        if (/^0x[a-f0-9]{40}$/i.test(candidate)) {
-                            const userRef = doc(db, 'users', candidate.trim().toLowerCase())
-                            const userSnap = await getDoc(userRef)
-                            if (userSnap.exists()) {
-                                const data = userSnap.data() as any
-                                // Prefer the registered user's name
-                                return { ...it, farmerName: data.name || it.farmerName }
-                            }
-                        }
-                    } catch (err) {
-                        // ignore per-list failures and return original listing
-                        console.warn('Failed to resolve farmer name for listing', it.id, err)
-                    }
-                    return it
+                const resp = await fetch('/api/marketplace/products')
+                if (!resp.ok) throw new Error(`Marketplace API returned ${resp.status}`)
+                const products = await resp.json()
+
+                // Map API product shape to the UI's expected listing fields
+                const mapped = (products || []).map((p: any) => ({
+                    id: p.id || p._id || p.documentId || '',
+                    // essential fields for the marketplace card
+                    name: String(p.name || ''),
+                    category: String(p.category || ''),
+                    description: String(p.description || ''),
+                    quantity: Number(p.quantity || 0),
+                    unit: String(p.unit || 'kg'),
+                    pricePerUnit: Number(p.price || 0),
+                    totalPrice: Number(p.price || 0) * Number(p.quantity || 0),
+                    harvestDate: p.harvestDate || null,
+                    status: p.status || 'active',
+                    createdAt: p.createdAt || new Date().toISOString(),
+                    images: p.images || [],
+                    // normalize producer to a simple object with the fields we use in UI
+                    producer: (p.producer && typeof p.producer === 'object')
+                        ? { name: p.producer.name || '', address: p.producer.address || '', phone: p.producer.phone || '' }
+                        : { name: '', address: String(p.producer || ''), phone: '' },
+                    verified: p.verified || false,
+                    organic: p.organic || false,
+                    // posted date for display
+                    postedDate: p.createdAt || p.postedDate || new Date().toISOString()
                 }))
 
-                if (mounted) setListings(resolved)
+                if (mounted) setListings(mapped)
             } catch (err) {
                 console.warn('Failed to load marketplace listings:', err)
             } finally {
@@ -113,20 +111,24 @@ export default function MarketplacePage() {
     ]
 
     const filteredListings = listings.filter(listing => {
-        const matchesSearch = listing.cropType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            listing.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            listing.farmerName.toLowerCase().includes(searchTerm.toLowerCase())
+        const q = searchTerm.trim().toLowerCase()
 
-        const matchesCrop = selectedCrop === '' || listing.cropType.toLowerCase() === selectedCrop
+        const matchesSearch = q === '' || (
+            String(listing.name || '').toLowerCase().includes(q) ||
+            String(listing.description || '').toLowerCase().includes(q) ||
+            (listing.producer && String(listing.producer.name || '').toLowerCase().includes(q))
+        )
+
+        const matchesCrop = selectedCrop === '' || String(listing.category || '').toLowerCase() === selectedCrop
 
         const matchesLocation = selectedLocation === '' ||
-            listing.location.toLowerCase().includes(selectedLocation)
+            String(listing.category || '').toLowerCase().includes(selectedLocation)
 
         const matchesPrice = priceRange === '' || (() => {
-            if (priceRange === '0-2000') return listing.pricePerKg <= 2000
-            if (priceRange === '2000-5000') return listing.pricePerKg > 2000 && listing.pricePerKg <= 5000
-            if (priceRange === '5000-10000') return listing.pricePerKg > 5000 && listing.pricePerKg <= 10000
-            if (priceRange === '10000+') return listing.pricePerKg > 10000
+            if (priceRange === '0-2000') return listing.pricePerUnit <= 2000
+            if (priceRange === '2000-5000') return listing.pricePerUnit > 2000 && listing.pricePerUnit <= 5000
+            if (priceRange === '5000-10000') return listing.pricePerUnit > 5000 && listing.pricePerUnit <= 10000
+            if (priceRange === '10000+') return listing.pricePerUnit > 10000
             return true
         })()
 
@@ -272,10 +274,10 @@ export default function MarketplacePage() {
                             {/* Image (use uploaded image if available; fall back to placeholder) */}
                             <div className="relative">
                                 <div className="aspect-video bg-gray-100 rounded-t-xl flex items-center justify-center overflow-hidden">
-                                    {listing.images && listing.images.length > 0 ? (
+                                        {listing.images && listing.images.length > 0 ? (
                                         // Listing images may be stored as URLs in Firestore; render the first one
                                         // Use simple img tag to avoid Next/Image optimizations on unknown remote hosts.
-                                        <img src={String(listing.images[0])} alt={listing.variety || listing.cropType} className="w-full h-full object-cover" />
+                                        <img src={String(listing.images[0])} alt={listing.name || listing.category} className="w-full h-full object-cover" />
                                     ) : (
                                         <TagIcon className="w-12 h-12 text-gray-400" />
                                     )}
@@ -303,73 +305,70 @@ export default function MarketplacePage() {
                             <div className="p-6">
                                 <div className="flex justify-between items-start mb-2">
                                     <div>
-                                        <h3 className="font-semibold text-lg">{listing.cropType}</h3>
-                                        <p className="text-sm text-gray-600">{listing.variety}</p>
+                                        <h3 className="font-semibold text-lg">{listing.name}</h3>
+                                        <p className="text-sm text-gray-600">{listing.category}</p>
+                                        {listing.harvestDate && (
+                                            <p className="text-xs text-gray-500 mt-1">{currentLang === 'en' ? 'Harvest:' : 'कटाई'} {String(listing.harvestDate)}</p>
+                                        )}
                                     </div>
                                     <div className="text-right">
-                                            {/* Show seller name here so buyers can identify the seller */}
-                                            <div className="text-sm text-gray-700 font-medium">{listing.farmerName || listing.name || listing.batchId || listing.id}</div>
-                                            <div className="mt-1">
-                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${listing.qualityGrade === 'Premium' || listing.qualityGrade === 'A'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    {listing.qualityGrade}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        <div className="text-sm text-gray-700 font-medium">{(listing.producer && listing.producer.name) || listing.name || listing.id}</div>
+                                        {listing.producer && listing.producer.address && (
+                                            <div className="text-xs text-gray-500 mt-1">{String(listing.producer.address).slice(0, 24)}</div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <p className="text-sm text-gray-600 mb-3 line-clamp-2">{listing.description}</p>
 
-                                <div className="space-y-2 mb-4">
-                                    <div className="flex items-center text-sm text-gray-600">
+                                <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
+                                    <div className="flex items-center">
                                         <ScaleIcon className="w-4 h-4 mr-2" />
-                                        <span>{listing.weight} kg</span>
+                                        <span>{listing.quantity} {listing.unit}</span>
                                     </div>
-                                    <div className="flex items-center text-sm text-gray-600">
+                                    <div className="flex items-center">
                                         <MapPinIcon className="w-4 h-4 mr-2" />
-                                        <span>{listing.location} • {listing.distance}</span>
+                                        <span>{listing.location}</span>
                                     </div>
-                                    <div className="flex items-center text-sm text-gray-600">
+                                    <div className="flex items-center">
                                         <UserIcon className="w-4 h-4 mr-2" />
-                                        <span>{listing.farmerName}</span>
+                                        <span>{(listing.producer && listing.producer.name) || listing.name}</span>
                                     </div>
                                 </div>
 
                                 <div className="border-t pt-4">
                                     <div className="flex justify-between items-center mb-3">
                                         <div>
-                                            <p className="text-2xl font-bold text-green-600">₹{formatNumber(listing.pricePerKg)}</p>
-                                            <p className="text-sm text-gray-500">per kg</p>
+                                            <p className="text-2xl font-bold text-green-600">₹{formatNumber(listing.pricePerUnit)}</p>
+                                            <p className="text-sm text-gray-500">{currentLang === 'en' ? `per ${listing.unit}` : `प्रति ${listing.unit}`}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="font-semibold">₹{formatNumber(listing.totalPrice / 100)}</p>
+                                            <p className="font-semibold">₹{formatNumber(listing.totalPrice)}</p>
                                             <p className="text-sm text-gray-500">{currentLang === 'en' ? 'Total' : 'कुल'}</p>
                                         </div>
                                     </div>
 
-                                    <div className="flex space-x-2">
+                                    <div className="flex items-center space-x-3">
                                         <button
                                             onClick={() => handleInquiry(listing)}
-                                            className={`flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}
+                                            className={`flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg text-sm font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}
                                         >
                                             {currentLang === 'en' ? 'Inquire Now' : 'पूछताछ करें'}
                                         </button>
                                         <a
-                                            href={`tel:${listing.farmerPhone}`}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg"
+                                            href={`tel:${(listing.producer && listing.producer.phone) || ''}`}
+                                            className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg"
                                         >
                                             <PhoneIcon className="w-5 h-5" />
                                         </a>
-                                        <button className="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-lg">
+                                        <button className="inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 rounded-lg">
                                             <ChatBubbleLeftRightIcon className="w-5 h-5" />
                                         </button>
                                     </div>
                                 </div>
 
                                 <p className="text-xs text-gray-500 mt-3">
-                                    {currentLang === 'en' ? 'Posted' : 'पोस्ट किया गया'} {listing.postedDate}
+                                    {currentLang === 'en' ? 'Posted' : 'पोस्ट किया गया'} {new Date(listing.postedDate).toLocaleString('en-IN')}
                                 </p>
                             </div>
                         </div>

@@ -302,7 +302,6 @@ function RegisterContent() {
                             </div>
                         </Link>
 
-<<<<<<< HEAD
                         <div className="flex items-center space-x-2">
                             <LogoutButton />
                             <button
@@ -312,15 +311,6 @@ function RegisterContent() {
                                 {currentLang === 'en' ? 'हिंदी' : 'English'}
                             </button>
                         </div>
-=======
-                        <button
-                            onClick={toggleLanguage}
-                            className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
-                            data-local-language-toggle
-                        >
-                            {currentLang === 'en' ? 'हिंदी' : 'English'}
-                        </button>
->>>>>>> main
                     </div>
                 </div>
             </header>
