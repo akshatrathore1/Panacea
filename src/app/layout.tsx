@@ -27,9 +27,7 @@ export default function RootLayout({
                 <meta name="dev-tools" content="disabled" />
             </head>
             <body className="min-h-screen bg-gradient-to-br from-orange-50 to-green-50">
-                <Providers>
-                    {children}
-                </Providers>
+                <Providers>{children}</Providers>
             </body>
         </html>
     )

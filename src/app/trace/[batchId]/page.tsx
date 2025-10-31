@@ -24,7 +24,7 @@ import { formatNumber } from '@/lib/format'
 export default function TracePage() {
     const params = useParams()
     const { t, i18n } = useTranslation()
-    const [currentLang, setCurrentLang] = useState('en')
+    const lang = (i18n.language as 'en' | 'hi') || 'en'
     const [isLoading, setIsLoading] = useState(true)
     const [batchData, setBatchData] = useState<any>(null)
 
@@ -130,9 +130,14 @@ export default function TracePage() {
     }, [batchId])
 
     const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
+        const newLang = lang === 'en' ? 'hi' : 'en'
         i18n.changeLanguage(newLang)
+        try {
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('language', newLang)
+                document.documentElement.lang = newLang
+            }
+        } catch {}
     }
 
     const getTransactionIcon = (type: string) => {
@@ -153,8 +158,8 @@ export default function TracePage() {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <ArrowPathIcon className="w-12 h-12 text-green-600 mx-auto mb-4 animate-spin" />
-                    <p className={`text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en' ? 'Loading batch information...' : 'बैच जानकारी लोड हो रही है...'}
+                    <p className={`text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                        {lang === 'en' ? 'Loading batch information...' : 'बैच जानकारी लोड हो रही है...'}
                     </p>
                 </div>
             </div>
@@ -166,19 +171,19 @@ export default function TracePage() {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="text-6xl mb-4">❌</div>
-                    <h1 className={`text-2xl font-bold text-gray-900 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en' ? 'Batch Not Found' : 'बैच नहीं मिला'}
+                    <h1 className={`text-2xl font-bold text-gray-900 mb-2 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                        {lang === 'en' ? 'Batch Not Found' : 'बैच नहीं मिला'}
                     </h1>
-                    <p className={`text-gray-600 mb-6 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en'
+                    <p className={`text-gray-600 mb-6 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                        {lang === 'en'
                             ? 'The batch ID you scanned does not exist in our system.'
                             : 'आपके द्वारा स्कैन किया गया बैच ID हमारे सिस्टम में मौजूद नहीं है।'}
                     </p>
                     <Link
                         href="/"
-                        className={`bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg ${currentLang === 'hi' ? 'font-hindi' : ''}`}
+                        className={`bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg ${lang === 'hi' ? 'font-hindi' : ''}`}
                     >
-                        {currentLang === 'en' ? 'Go to Homepage' : 'होमपेज पर जाएं'}
+                        {lang === 'en' ? 'Go to Homepage' : 'होमपेज पर जाएं'}
                     </Link>
                 </div>
             </div>
@@ -194,20 +199,18 @@ export default function TracePage() {
                         <Link href="/" className="flex items-center space-x-2">
                             <span className="text-2xl">🌾</span>
                             <span className="text-xl font-bold text-gray-900">
-                                {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
+                                {lang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                             </span>
                         </Link>
 
-                        <div className="flex items-center space-x-3">
-                            <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
-                            >
-                                <GlobeAltIcon className="w-5 h-5" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
-                        </div>
+                        <button
+                            onClick={toggleLanguage}
+                            data-local-language-toggle
+                            className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
+                        >
+                            <GlobeAltIcon className="w-5 h-5" />
+                            <span>{lang === 'en' ? 'हिंदी' : 'English'}</span>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -217,15 +220,15 @@ export default function TracePage() {
                 <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl text-white p-8 mb-8">
                     <div className="flex items-center mb-4">
                         <CheckCircleIcon className="w-8 h-8 text-green-200 mr-3" />
-                        <span className={`text-sm font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                            {currentLang === 'en' ? 'Verified on Blockchain' : 'ब्लॉकचेन पर सत्यापित'}
+                        <span className={`text-sm font-medium ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                            {lang === 'en' ? 'Verified on Blockchain' : 'ब्लॉकचेन पर सत्यापित'}
                         </span>
                     </div>
-                    <h1 className={`text-4xl font-bold mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en' ? 'Product Journey' : 'उत्पाद की यात्रा'}
+                    <h1 className={`text-4xl font-bold mb-2 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                        {lang === 'en' ? 'Product Journey' : 'उत्पाद की यात्रा'}
                     </h1>
-                    <p className={`text-green-100 text-lg ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en' ? 'From Farm to Your Table' : 'खेत से आपकी मेज तक'}
+                    <p className={`text-green-100 text-lg ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                        {lang === 'en' ? 'From Farm to Your Table' : 'खेत से आपकी मेज तक'}
                     </p>
                     <div className="mt-4 bg-white/20 rounded-lg p-3 inline-block">
                         <span className="text-sm font-medium">Batch ID: {batchData.batchId}</span>
@@ -238,29 +241,29 @@ export default function TracePage() {
                         {/* Product Details */}
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b">
-                                <h2 className={`text-xl font-semibold flex items-center ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                <h2 className={`text-xl font-semibold flex items-center ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                     <DocumentTextIcon className="w-6 h-6 text-blue-600 mr-2" />
-                                    {currentLang === 'en' ? 'Product Details' : 'उत्पाद विवरण'}
+                                    {lang === 'en' ? 'Product Details' : 'उत्पाद विवरण'}
                                 </h2>
                             </div>
                             <div className="p-6">
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div className="space-y-4">
                                         <div>
-                                            <label className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                {currentLang === 'en' ? 'Crop Type' : 'फसल का प्रकार'}
+                                            <label className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {lang === 'en' ? 'Crop Type' : 'фसल का प्रकार'}
                                             </label>
                                             <p className="font-semibold text-lg">{batchData.cropType}</p>
                                         </div>
                                         <div>
-                                            <label className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                {currentLang === 'en' ? 'Variety' : 'किस्म'}
+                                            <label className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {lang === 'en' ? 'Variety' : 'किस्म'}
                                             </label>
                                             <p className="font-semibold">{batchData.variety}</p>
                                         </div>
                                         <div>
-                                            <label className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                {currentLang === 'en' ? 'Weight' : 'वजन'}
+                                            <label className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {lang === 'en' ? 'Weight' : 'वजन'}
                                             </label>
                                             <p className="font-semibold flex items-center">
                                                 <ScaleIcon className="w-4 h-4 mr-1" />
@@ -270,8 +273,8 @@ export default function TracePage() {
                                     </div>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                {currentLang === 'en' ? 'Quality Grade' : 'गुणवत्ता श्रेणी'}
+                                            <label className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {lang === 'en' ? 'Quality Grade' : 'गुणवत्ता श्रेणी'}
                                             </label>
                                             <p className="font-semibold flex items-center">
                                                 <StarIcon className="w-4 h-4 text-yellow-500 mr-1" />
@@ -279,8 +282,8 @@ export default function TracePage() {
                                             </p>
                                         </div>
                                         <div>
-                                            <label className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                {currentLang === 'en' ? 'Farm Location' : 'खेत का स्थान'}
+                                            <label className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {lang === 'en' ? 'Farm Location' : 'खेत का स्थान'}
                                             </label>
                                             <p className="font-semibold flex items-center">
                                                 <MapPinIcon className="w-4 h-4 mr-1" />
@@ -288,8 +291,8 @@ export default function TracePage() {
                                             </p>
                                         </div>
                                         <div>
-                                            <label className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                {currentLang === 'en' ? 'Harvest Date' : 'कटाई की तारीख'}
+                                            <label className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {lang === 'en' ? 'Harvest Date' : 'कटाई की तारीख'}
                                             </label>
                                             <p className="font-semibold flex items-center">
                                                 <CalendarIcon className="w-4 h-4 mr-1" />
@@ -304,9 +307,9 @@ export default function TracePage() {
                         {/* Supply Chain Journey */}
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b">
-                                <h2 className={`text-xl font-semibold flex items-center ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                <h2 className={`text-xl font-semibold flex items-center ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                     <ArrowPathIcon className="w-6 h-6 text-green-600 mr-2" />
-                                    {currentLang === 'en' ? 'Supply Chain Journey' : 'आपूर्ति श्रृंखला यात्रा'}
+                                    {lang === 'en' ? 'Supply Chain Journey' : 'आपूर्ति श्रृंखला यात्रा'}
                                 </h2>
                             </div>
                             <div className="p-6">
@@ -326,7 +329,7 @@ export default function TracePage() {
                                                 <div className="ml-4 flex-1">
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                            <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                            <h3 className={`font-semibold ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                                                 {transaction.type}
                                                             </h3>
                                                             <p className="text-sm text-gray-600">
@@ -356,9 +359,9 @@ export default function TracePage() {
                         {/* Quality Reports */}
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b">
-                                <h2 className={`text-xl font-semibold flex items-center ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                <h2 className={`text-xl font-semibold flex items-center ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                     <StarIcon className="w-6 h-6 text-purple-600 mr-2" />
-                                    {currentLang === 'en' ? 'Quality Reports' : 'गुणवत्ता रिपोर्ट'}
+                                    {lang === 'en' ? 'Quality Reports' : 'गुणवत्ता रिपोर्ट'}
                                 </h2>
                             </div>
                             <div className="p-6">
@@ -367,11 +370,11 @@ export default function TracePage() {
                                         <div key={report.id} className="border rounded-lg p-4">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>
-                                                    <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    <h3 className={`font-semibold ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                                         {report.type}
                                                     </h3>
                                                     <p className="text-sm text-gray-600">
-                                                        {currentLang === 'en' ? 'Inspector:' : 'निरीक्षक:'} {report.inspector}
+                                                        {lang === 'en' ? 'Inspector:' : 'निरीक्षक:'} {report.inspector}
                                                     </p>
                                                     <p className="text-xs text-gray-500">{report.date}</p>
                                                 </div>
@@ -401,9 +404,9 @@ export default function TracePage() {
                         {/* Farmer Information */}
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b">
-                                <h3 className={`font-semibold flex items-center ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                <h3 className={`font-semibold flex items-center ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                     <UserIcon className="w-5 h-5 text-green-600 mr-2" />
-                                    {currentLang === 'en' ? 'Farmer Information' : 'किसान की जानकारी'}
+                                    {lang === 'en' ? 'Farmer Information' : 'किसान की जानकारी'}
                                 </h3>
                             </div>
                             <div className="p-6">
@@ -418,13 +421,13 @@ export default function TracePage() {
                                 <div className="mt-6 space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">
-                                            {currentLang === 'en' ? 'Sowing Date:' : 'बुआई की तारीख:'}
+                                            {lang === 'en' ? 'Sowing Date:' : 'बुआई की तारीख:'}
                                         </span>
                                         <span className="font-medium">{batchData.sowingDate}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600">
-                                            {currentLang === 'en' ? 'Harvest Date:' : 'कटाई की तारीख:'}
+                                            {lang === 'en' ? 'Harvest Date:' : 'कटाई की तारीख:'}
                                         </span>
                                         <span className="font-medium">{batchData.harvestDate}</span>
                                     </div>
@@ -435,8 +438,8 @@ export default function TracePage() {
                         {/* Current Status */}
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b">
-                                <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Current Status' : 'वर्तमान स्थिति'}
+                                <h3 className={`font-semibold ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                    {lang === 'en' ? 'Current Status' : 'वर्तमान स्थिति'}
                                 </h3>
                             </div>
                             <div className="p-6">
@@ -444,11 +447,11 @@ export default function TracePage() {
                                     <BuildingStorefrontIcon className="w-12 h-12 text-blue-600 mx-auto mb-3" />
                                     <h4 className="font-semibold mb-1">{batchData.currentOwner}</h4>
                                     <p className="text-sm text-gray-600 mb-4">
-                                        {currentLang === 'en' ? 'Current Owner' : 'वर्तमान स्वामी'}
+                                        {lang === 'en' ? 'Current Owner' : 'वर्तमान स्वामी'}
                                     </p>
                                     <div className="bg-green-50 p-3 rounded-lg">
-                                        <p className={`text-sm text-green-800 font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                            {currentLang === 'en' ? 'Available for Purchase' : 'खरीदारी के लिए उपलब्ध'}
+                                        <p className={`text-sm text-green-800 font-medium ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {lang === 'en' ? 'Available for Purchase' : 'खरीदारी के लिए उपलब्ध'}
                                         </p>
                                     </div>
                                 </div>
@@ -458,9 +461,9 @@ export default function TracePage() {
                         {/* Images */}
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b">
-                                <h3 className={`font-semibold flex items-center ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                <h3 className={`font-semibold flex items-center ${lang === 'hi' ? 'font-hindi' : ''}`}>
                                     <PhotoIcon className="w-5 h-5 text-purple-600 mr-2" />
-                                    {currentLang === 'en' ? 'Product Images' : 'उत्पाद चित्र'}
+                                    {lang === 'en' ? 'Product Images' : 'उत्पाद चित्र'}
                                 </h3>
                             </div>
                             <div className="p-6">
@@ -476,26 +479,26 @@ export default function TracePage() {
 
                         {/* Trust Score */}
                         <div className="bg-gradient-to-br from-green-500 to-blue-600 rounded-xl text-white p-6">
-                            <h3 className={`font-semibold mb-3 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                {currentLang === 'en' ? 'Trust Score' : 'भरोसा स्कोर'}
+                            <h3 className={`font-semibold mb-3 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                {lang === 'en' ? 'Trust Score' : 'भरोसा स्कोर'}
                             </h3>
                             <div className="text-center">
                                 <div className="text-4xl font-bold mb-2">95%</div>
-                                <p className={`text-green-100 text-sm ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Verified & Trusted' : 'सत्यापित और भरोसेमंद'}
+                                <p className={`text-green-100 text-sm ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                                    {lang === 'en' ? 'Verified & Trusted' : 'सत्यापित और भरोसेमंद'}
                                 </p>
                                 <div className="mt-4 space-y-2 text-left">
                                     <div className="flex items-center text-sm">
                                         <CheckCircleIcon className="w-4 h-4 text-green-200 mr-2" />
-                                        <span>{currentLang === 'en' ? 'Blockchain Verified' : 'ब्लॉकचेन सत्यापित'}</span>
+                                        <span>{lang === 'en' ? 'Blockchain Verified' : 'ब्लॉकचेन सत्यापित'}</span>
                                     </div>
                                     <div className="flex items-center text-sm">
                                         <CheckCircleIcon className="w-4 h-4 text-green-200 mr-2" />
-                                        <span>{currentLang === 'en' ? 'Quality Certified' : 'गुणवत्ता प्रमाणित'}</span>
+                                        <span>{lang === 'en' ? 'Quality Certified' : 'गुणवत्ता प्रमाणित'}</span>
                                     </div>
                                     <div className="flex items-center text-sm">
                                         <CheckCircleIcon className="w-4 h-4 text-green-200 mr-2" />
-                                        <span>{currentLang === 'en' ? 'Origin Verified' : 'मूल सत्यापित'}</span>
+                                        <span>{lang === 'en' ? 'Origin Verified' : 'मूल सत्यापित'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -507,12 +510,12 @@ export default function TracePage() {
                 <div className="mt-8 text-center space-y-4">
                     <Link
                         href="/"
-                        className={`inline-block bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}
+                        className={`inline-block bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium ${lang === 'hi' ? 'font-hindi' : ''}`}
                     >
-                        {currentLang === 'en' ? 'Explore More Products' : 'और उत्पाद देखें'}
+                        {lang === 'en' ? 'Explore More Products' : 'और उत्पाद देखें'}
                     </Link>
-                    <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en'
+                    <p className={`text-sm text-gray-600 ${lang === 'hi' ? 'font-hindi' : ''}`}>
+                        {lang === 'en'
                             ? 'Powered by KrashiAalok Blockchain Technology'
                             : 'कृषिआलोक ब्लॉकचेन तकनीक द्वारा संचालित'}
                     </p>

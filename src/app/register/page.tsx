@@ -43,7 +43,7 @@ function RegisterContent() {
         }
     }
 
-    const [currentLang, setCurrentLang] = useState('en')
+    const currentLang = i18n.language || 'en'
     const [step, setStep] = useState(1)
     const [selectedRole, setSelectedRole] = useState<UserRole | ''>('')
     const [formData, setFormData] = useState({
@@ -186,8 +186,8 @@ function RegisterContent() {
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
         i18n.changeLanguage(newLang)
+        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch {}
     }
 
     const handleRoleSelect = (roleId: UserRole) => {
@@ -302,6 +302,7 @@ function RegisterContent() {
                             </div>
                         </Link>
 
+<<<<<<< HEAD
                         <div className="flex items-center space-x-2">
                             <LogoutButton />
                             <button
@@ -311,6 +312,15 @@ function RegisterContent() {
                                 {currentLang === 'en' ? 'हिंदी' : 'English'}
                             </button>
                         </div>
+=======
+                        <button
+                            onClick={toggleLanguage}
+                            className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
+                            data-local-language-toggle
+                        >
+                            {currentLang === 'en' ? 'हिंदी' : 'English'}
+                        </button>
+>>>>>>> main
                     </div>
                 </div>
             </header>

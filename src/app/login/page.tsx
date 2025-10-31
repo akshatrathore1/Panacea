@@ -20,7 +20,7 @@ export default function LoginPage() {
     const router = useRouter()
     const { connectWallet, isConnected, user, isLoading, setLocalUser, provider, signer } = useWeb3()
 
-    const [currentLang, setCurrentLang] = useState('en')
+    const currentLang = i18n.language || 'en'
     const [loginMethod, setLoginMethod] = useState<'wallet' | 'phone'>('wallet')
     const [phoneNumber, setPhoneNumber] = useState('')
     const [otp, setOtp] = useState('')
@@ -96,8 +96,8 @@ export default function LoginPage() {
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
         i18n.changeLanguage(newLang)
+        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch {}
     }
 
     const [toastMessage, setToastMessage] = useState<string | null>(null)

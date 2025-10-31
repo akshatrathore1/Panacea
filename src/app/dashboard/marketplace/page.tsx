@@ -21,7 +21,7 @@ import { formatNumber } from '@/lib/format'
 
 export default function MarketplacePage() {
     const { t, i18n } = useTranslation()
-    const [currentLang, setCurrentLang] = useState('en')
+    const currentLang = i18n.language || 'en'
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCrop, setSelectedCrop] = useState('')
     const [selectedLocation, setSelectedLocation] = useState('')
@@ -30,7 +30,6 @@ export default function MarketplacePage() {
 
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
         i18n.changeLanguage(newLang)
     }
 
@@ -160,6 +159,7 @@ export default function MarketplacePage() {
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
+                                data-local-language-toggle
                             >
                                 <GlobeAltIcon className="w-5 h-5" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
