@@ -14,14 +14,15 @@ import {
     ChartBarIcon,
     ExclamationTriangleIcon,
     CheckCircleIcon,
-    EyeIcon
+    EyeIcon,
+    GlobeAltIcon
 } from '@heroicons/react/24/outline'
 import { formatNumber } from '@/lib/format'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
 
 export default function RetailerDashboard() {
-    const { t, i18n } = useTranslation()
+    const { i18n } = useTranslation()
     const [currentLang, setCurrentLang] = useState('en')
 
     const toggleLanguage = () => {
@@ -168,6 +169,7 @@ export default function RetailerDashboard() {
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-md transition-colors"
                             >
+                                <GlobeAltIcon className="w-4 h-4" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
                         </div>
@@ -403,27 +405,27 @@ export default function RetailerDashboard() {
                                 </h3>
                             </div>
                             <div className="p-6 space-y-3">
-                                    <a href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-                                        <div className="flex items-start space-x-3">
-                                            <div className="p-2 rounded-lg bg-purple-50">
-                                                <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}</h4>
-                                                <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Browse products from suppliers' : 'आपूर्तिकर्ताओं से उत्पाद ब्राउज़ करें'}</p>
-                                            </div>
+                                <a href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                                    <div className="flex items-start space-x-3">
+                                        <div className="p-2 rounded-lg bg-purple-50">
+                                            <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
                                         </div>
-                                    </a>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}</h4>
+                                            <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Browse products from suppliers' : 'आपूर्तिकर्ताओं से उत्पाद ब्राउज़ करें'}</p>
+                                        </div>
+                                    </div>
+                                </a>
 
-                                    <button className={`w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        <ChartBarIcon className="w-5 h-5" />
-                                        <span>{currentLang === 'en' ? 'Sales Analytics' : 'बिक्री एनालिटिक्स'}</span>
-                                    </button>
-                                    <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        <TruckIcon className="w-5 h-5" />
-                                        <span>{currentLang === 'en' ? 'Track Deliveries' : 'डिलीवरी ट्रैक करें'}</span>
-                                    </button>
-                                </div>
+                                <button className={`w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    <ChartBarIcon className="w-5 h-5" />
+                                    <span>{currentLang === 'en' ? 'Sales Analytics' : 'बिक्री एनालिटिक्स'}</span>
+                                </button>
+                                <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    <TruckIcon className="w-5 h-5" />
+                                    <span>{currentLang === 'en' ? 'Track Deliveries' : 'डिलीवरी ट्रैक करें'}</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -137,7 +137,7 @@ export default function TracePage() {
                 localStorage.setItem('language', newLang)
                 document.documentElement.lang = newLang
             }
-        } catch {}
+        } catch { }
     }
 
     const getTransactionIcon = (type: string) => {
@@ -198,7 +198,7 @@ export default function TracePage() {
                     <div className="flex justify-between items-center py-4">
                         <Link href="/" className="flex items-center space-x-2">
                             <span className="text-2xl">🌾</span>
-                            <span className="text-xl font-bold text-gray-900">
+                            <span className="text-2xl font-bold text-gray-900">
                                 {lang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                             </span>
                         </Link>

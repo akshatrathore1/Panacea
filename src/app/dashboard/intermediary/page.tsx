@@ -11,15 +11,18 @@ import {
     ClockIcon,
     ArrowTrendingUpIcon,
     DocumentCheckIcon,
-    TagIcon,
     MapPinIcon,
-    PhoneIcon
+    PhoneIcon,
+    ShoppingCartIcon,
+    GlobeAltIcon,
+    PlusIcon,
+    TagIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
 import { formatNumber } from '@/lib/format'
 
 export default function IntermediaryDashboard() {
-    const { t, i18n } = useTranslation()
+    const { i18n } = useTranslation()
     const [currentLang, setCurrentLang] = useState('en')
 
     const toggleLanguage = () => {
@@ -132,7 +135,7 @@ export default function IntermediaryDashboard() {
                                     {currentLang === 'en' ? 'Intermediary Dashboard' : 'मध्यस्थ डैशबोर्ड'}
                                 </h1>
                                 <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Logistics & Distribution Management' : 'लॉजिस्टिक्स और वितरण प्रबंधन'}
+                                    {currentLang === 'en' ? 'Distribution Management' : 'लॉजिस्टिक्स और वितरण प्रबंधन'}
                                 </p>
                             </div>
                         </div>
@@ -143,6 +146,7 @@ export default function IntermediaryDashboard() {
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition-colors"
                             >
+                                <GlobeAltIcon className="w-4 h-4" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
                         </div>
@@ -341,17 +345,47 @@ export default function IntermediaryDashboard() {
                                 </h3>
                             </div>
                             <div className="p-6 space-y-3">
-                                <a href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                                <Link
+                                    href="/dashboard/producer/create-batch"
+                                    className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+                                >
                                     <div className="flex items-start space-x-3">
-                                        <div className="p-2 rounded-lg bg-orange-100">
+                                        <div className="p-2 rounded-lg bg-green-50">
+                                            <PlusIcon className="w-5 h-5 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Create Batch' : 'नया बैच बनाएँ'}</h4>
+                                            <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Register produce batches before logistics' : 'लॉजिस्टिक्स से पहले उत्पाद बैच पंजीकृत करें'}</p>
+                                        </div>
+                                    </div>
+                                </Link>
+
+                                <Link
+                                    href="/dashboard/producer/list"
+                                    className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+                                >
+                                    <div className="flex items-start space-x-3">
+                                        <div className="p-2 rounded-lg bg-orange-50">
                                             <TagIcon className="w-5 h-5 text-orange-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'List for Sale' : 'बिक्री के लिए सूची'}</h4>
+                                            <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Publish available lots for retailers' : 'खुदरा विक्रेताओं के लिए उपलब्ध बैच सूचीबद्ध करें'}</p>
+                                        </div>
+                                    </div>
+                                </Link>
+
+                                <Link href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                                    <div className="flex items-start space-x-3">
+                                        <div className="p-2 rounded-lg bg-purple-50">
+                                            <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
                                         </div>
                                         <div>
                                             <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}</h4>
                                             <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Browse products & listings' : 'उत्पाद और सूची ब्राउज़ करें'}</p>
                                         </div>
                                     </div>
-                                </a>
+                                </Link>
 
                                 <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     <TruckIcon className="w-5 h-5" />

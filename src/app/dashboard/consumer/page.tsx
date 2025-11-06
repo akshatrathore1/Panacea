@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWeb3 } from '@/components/Providers'
 import { useTranslation } from 'react-i18next'
@@ -12,17 +12,15 @@ import {
     QrCodeIcon,
     MapPinIcon,
     StarIcon,
-    CheckBadgeIcon,
-    TruckIcon,
     BellIcon,
-    MagnifyingGlassIcon,
+    GlobeAltIcon,
     AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
 
 export default function ConsumerDashboard() {
-    const { t, i18n } = useTranslation()
+    const { i18n } = useTranslation()
     const router = useRouter()
     const { user } = useWeb3()
     const [currentLang, setCurrentLang] = useState('en')
@@ -46,11 +44,34 @@ export default function ConsumerDashboard() {
     }
 
     // Mock data for consumer activities
+    const ratingsProvided = [
+        {
+            id: 'RAT-2024-001',
+            product: 'Organic Wheat',
+            batchId: 'KA-WH-2024-003',
+            rating: 5,
+            feedback: currentLang === 'en'
+                ? 'Excellent quality and freshness'
+                : 'उत्कृष्ट गुणवत्ता और ताजगी',
+            date: '2024-01-12'
+        },
+        {
+            id: 'RAT-2024-002',
+            product: 'Basmati Rice',
+            batchId: 'KA-RIC-2024-007',
+            rating: 4,
+            feedback: currentLang === 'en'
+                ? 'Great aroma, slightly firm texture'
+                : 'बेहतरीन सुगंध, थोड़ा कड़ा बनावट',
+            date: '2024-01-10'
+        }
+    ]
+
     const stats = {
         totalPurchases: 23,
         savedProducts: 8,
         trackedItems: 5,
-        loyaltyPoints: 1250
+        ratingsSubmitted: ratingsProvided.length
     }
 
     const recentPurchases = [
@@ -64,7 +85,7 @@ export default function ConsumerDashboard() {
             price: 225,
             purchaseDate: '2024-01-12',
             qualityScore: 9.2,
-            status: 'delivered',
+            status: 'collected',
             rating: 5
         },
         {
@@ -77,7 +98,7 @@ export default function ConsumerDashboard() {
             price: 170,
             purchaseDate: '2024-01-10',
             qualityScore: 9.5,
-            status: 'delivered',
+            status: 'collected',
             rating: 5
         },
         {
@@ -90,7 +111,7 @@ export default function ConsumerDashboard() {
             price: 195,
             purchaseDate: '2024-01-14',
             qualityScore: 8.8,
-            status: 'in_transit',
+            status: 'ready_for_pickup',
             rating: null
         }
     ]
@@ -130,15 +151,6 @@ export default function ConsumerDashboard() {
         },
         {
             id: 'NOT-002',
-            type: 'delivery',
-            message: currentLang === 'en'
-                ? 'Your order PUR-2024-047 is out for delivery'
-                : 'आपका ऑर्डर PUR-2024-047 डिलीवरी के लिए निकला है',
-            timestamp: '4 hours ago',
-            isNew: true
-        },
-        {
-            id: 'NOT-003',
             type: 'new_product',
             message: currentLang === 'en'
                 ? 'New organic vegetables available from Amit Singh'
@@ -148,10 +160,21 @@ export default function ConsumerDashboard() {
         }
     ]
 
+    const [showNotificationDot, setShowNotificationDot] = useState(notifications.some((notification) => notification.isNew))
+    const notificationsRef = useRef<HTMLDivElement | null>(null)
+
+    const handleNotificationsClick = () => {
+        if (notificationsRef.current) {
+            notificationsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            notificationsRef.current.focus?.()
+        }
+        setShowNotificationDot(false)
+    }
+
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'delivered': return 'bg-green-100 text-green-800'
-            case 'in_transit': return 'bg-blue-100 text-blue-800'
+            case 'collected': return 'bg-green-100 text-green-800'
+            case 'ready_for_pickup': return 'bg-indigo-100 text-indigo-800'
             case 'pending': return 'bg-yellow-100 text-yellow-800'
             default: return 'bg-gray-100 text-gray-800'
         }
@@ -159,8 +182,8 @@ export default function ConsumerDashboard() {
 
     const getStatusText = (status: string) => {
         const statusMap = {
-            'delivered': currentLang === 'en' ? 'Delivered' : 'डिलीवर किया गया',
-            'in_transit': currentLang === 'en' ? 'In Transit' : 'ट्रांजिट में',
+            'collected': currentLang === 'en' ? 'Collected' : 'संग्रहित',
+            'ready_for_pickup': currentLang === 'en' ? 'Ready for Pickup' : 'पिकअप के लिए तैयार',
             'pending': currentLang === 'en' ? 'Pending' : 'लंबित'
         }
         return statusMap[status as keyof typeof statusMap] || status
@@ -189,16 +212,24 @@ export default function ConsumerDashboard() {
                         </div>
 
                         <div className="flex items-center space-x-4">
-                            <div className="relative">
-                                <BellIcon className="w-6 h-6 text-gray-600" />
-                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={handleNotificationsClick}
+                                className="relative rounded-full p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                aria-label={currentLang === 'en' ? 'View notifications' : 'अधिसूचनाएं देखें'}
+                            >
+                                <BellIcon className="w-6 h-6" />
+                                {showNotificationDot && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500"></span>
+                                )}
+                            </button>
                             <LogoutButton />
                             <button
                                 onClick={toggleLanguage}
                                 className="flex items-center space-x-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded-md transition-colors"
                                 data-local-language-toggle
                             >
+                                <GlobeAltIcon className="w-4 h-4" />
                                 <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
                         </div>
@@ -255,12 +286,12 @@ export default function ConsumerDashboard() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Loyalty Points' : 'लॉयल्टी पॉइंट्स'}
+                                    {currentLang === 'en' ? 'Ratings Provided' : 'दी गई रेटिंग्स'}
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">{stats.loyaltyPoints}</p>
+                                <p className="text-2xl font-bold text-gray-900">{stats.ratingsSubmitted}</p>
                             </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <CheckBadgeIcon className="w-6 h-6 text-green-600" />
+                            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <StarIcon className="w-6 h-6 text-yellow-600" />
                             </div>
                         </div>
                     </div>
@@ -311,7 +342,7 @@ export default function ConsumerDashboard() {
 
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-4">
-                                                {purchase.status === 'delivered' && purchase.rating && (
+                                                {purchase.status === 'collected' && purchase.rating && (
                                                     <div className="flex items-center space-x-1">
                                                         <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                             {currentLang === 'en' ? 'Your rating:' : 'आपकी रेटिंग:'}
@@ -335,13 +366,13 @@ export default function ConsumerDashboard() {
                                                     <QrCodeIcon className="w-4 h-4" />
                                                     <span>{currentLang === 'en' ? 'Trace' : 'ट्रेस'}</span>
                                                 </Link>
-                                                {purchase.status === 'in_transit' && (
-                                                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1">
-                                                        <TruckIcon className="w-4 h-4" />
-                                                        <span>{currentLang === 'en' ? 'Track' : 'ट्रैक'}</span>
+                                                {purchase.status === 'ready_for_pickup' && (
+                                                    <button className={`bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        <MapPinIcon className="w-4 h-4" />
+                                                        <span>{currentLang === 'en' ? 'View Pickup Info' : 'पिकअप जानकारी देखें'}</span>
                                                     </button>
                                                 )}
-                                                {purchase.status === 'delivered' && !purchase.rating && (
+                                                {purchase.status === 'collected' && !purchase.rating && (
                                                     <button className={`bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                         {currentLang === 'en' ? 'Rate Product' : 'उत्पाद रेट करें'}
                                                     </button>
@@ -357,7 +388,11 @@ export default function ConsumerDashboard() {
                     {/* Sidebar */}
                     <div className="space-y-6">
                         {/* Notifications */}
-                        <div className="bg-white rounded-xl shadow-sm border">
+                        <div
+                            ref={notificationsRef}
+                            className="bg-white rounded-xl shadow-sm border"
+                            tabIndex={-1}
+                        >
                             <div className="p-6 border-b border-gray-200">
                                 <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Notifications' : 'अधिसूचनाएं'}
@@ -370,6 +405,34 @@ export default function ConsumerDashboard() {
                                             {notification.message}
                                         </p>
                                         <p className="text-xs text-gray-500 mt-1">{notification.timestamp}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border">
+                            <div className="p-6 border-b border-gray-200">
+                                <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    {currentLang === 'en' ? 'Ratings Provided' : 'दी गई रेटिंग्स'}
+                                </h3>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                {ratingsProvided.map((rating) => (
+                                    <div key={rating.id} className="border border-gray-200 rounded-lg p-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="font-medium text-gray-900">{rating.product}</h4>
+                                                <p className="text-sm text-gray-600">{rating.batchId}</p>
+                                            </div>
+                                            <div className="flex items-center text-yellow-500">
+                                                <StarIcon className="w-4 h-4 fill-current" />
+                                                <span className="text-sm font-medium text-gray-700 ml-1">{rating.rating}</span>
+                                            </div>
+                                        </div>
+                                        <p className={`text-sm text-gray-600 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {rating.feedback}
+                                        </p>
+                                        <p className="text-xs text-gray-500">{rating.date}</p>
                                     </div>
                                 ))}
                             </div>
@@ -426,17 +489,17 @@ export default function ConsumerDashboard() {
                                 </h3>
                             </div>
                             <div className="p-6 space-y-3">
-                                    {/* Marketplace removed for consumer role — consumers do not have access */}
+                                {/* Marketplace removed for consumer role — consumers do not have access */}
 
-                                    <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        <QrCodeIcon className="w-5 h-5" />
-                                        <span>{currentLang === 'en' ? 'Scan QR Code' : 'QR कोड स्कैन करें'}</span>
-                                    </button>
-                                    <button className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                                        <span>{currentLang === 'en' ? 'Find Local Stores' : 'स्थानीय स्टोर खोजें'}</span>
-                                    </button>
-                                </div>
+                                <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    <QrCodeIcon className="w-5 h-5" />
+                                    <span>{currentLang === 'en' ? 'Scan QR Code' : 'QR कोड स्कैन करें'}</span>
+                                </button>
+                                <button className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
+                                    <span>{currentLang === 'en' ? 'Find Local Stores' : 'स्थानीय स्टोर खोजें'}</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

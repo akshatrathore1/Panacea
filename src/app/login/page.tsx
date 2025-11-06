@@ -25,7 +25,7 @@ export default function LoginPage() {
     const [phoneNumber, setPhoneNumber] = useState('')
     const [otp, setOtp] = useState('')
     const [otpSent, setOtpSent] = useState(false)
-    
+
 
     // Automatic redirect: if a persisted user exists or a connected wallet
     // corresponds to a registered profile, forward straight to the dashboard.
@@ -82,7 +82,7 @@ export default function LoginPage() {
                     const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
                     if (res.ok) {
                         const profile = await res.json()
-                        try { setLocalUser(profile) } catch (e) {}
+                        try { setLocalUser(profile) } catch (e) { }
                         try { router.replace(`/dashboard/${profile.role}`) } catch (e) { router.push(`/dashboard/${profile.role}`) }
                     }
                 }
@@ -97,7 +97,7 @@ export default function LoginPage() {
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
         i18n.changeLanguage(newLang)
-        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch {}
+        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch { }
     }
 
     const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -155,7 +155,7 @@ export default function LoginPage() {
                 const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
                 if (res.ok) {
                     const profile = await res.json()
-                    try { setLocalUser(profile) } catch (e) {}
+                    try { setLocalUser(profile) } catch (e) { }
                     router.replace(`/dashboard/${profile.role}`)
                     return
                 }
@@ -229,7 +229,7 @@ export default function LoginPage() {
                             <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
                             <div className="flex items-center space-x-2">
                                 <span className="text-2xl">🌾</span>
-                                <span className="text-xl font-bold text-gray-900">
+                                <span className="text-2xl font-bold text-gray-900">
                                     {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                                 </span>
                             </div>
@@ -275,8 +275,8 @@ export default function LoginPage() {
                             <button
                                 onClick={() => setLoginMethod('wallet')}
                                 className={`flex-1 py-3 px-4 text-center font-medium rounded-l-xl transition-colors ${loginMethod === 'wallet'
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                     } ${currentLang === 'hi' ? 'font-hindi' : ''}`}
                             >
                                 <WalletIcon className="w-5 h-5 mx-auto mb-1" />
@@ -285,8 +285,8 @@ export default function LoginPage() {
                             <button
                                 onClick={() => setLoginMethod('phone')}
                                 className={`flex-1 py-3 px-4 text-center font-medium rounded-r-xl transition-colors ${loginMethod === 'phone'
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                     } ${currentLang === 'hi' ? 'font-hindi' : ''}`}
                             >
                                 <PhoneIcon className="w-5 h-5 mx-auto mb-1" />

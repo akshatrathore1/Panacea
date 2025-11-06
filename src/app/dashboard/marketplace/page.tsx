@@ -151,7 +151,7 @@ export default function MarketplacePage() {
                     <div className="flex justify-between items-center py-4">
                         <Link href="/" className="flex items-center space-x-2">
                             <span className="text-2xl">🌾</span>
-                            <span className="text-xl font-bold text-gray-900">
+                            <span className="text-2xl font-bold text-gray-900">
                                 {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                             </span>
                         </Link>
@@ -274,7 +274,7 @@ export default function MarketplacePage() {
                             {/* Image (use uploaded image if available; fall back to placeholder) */}
                             <div className="relative">
                                 <div className="aspect-video bg-gray-100 rounded-t-xl flex items-center justify-center overflow-hidden">
-                                        {listing.images && listing.images.length > 0 ? (
+                                    {listing.images && listing.images.length > 0 ? (
                                         // Listing images may be stored as URLs in Firestore; render the first one
                                         // Use simple img tag to avoid Next/Image optimizations on unknown remote hosts.
                                         <img src={String(listing.images[0])} alt={listing.name || listing.category} className="w-full h-full object-cover" />

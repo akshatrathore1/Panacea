@@ -13,7 +13,8 @@ import {
     PhoneIcon,
     IdentificationIcon,
     WalletIcon,
-    ArrowLeftIcon
+    ArrowLeftIcon,
+    GlobeAltIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
 
@@ -187,7 +188,7 @@ function RegisterContent() {
     const toggleLanguage = () => {
         const newLang = currentLang === 'en' ? 'hi' : 'en'
         i18n.changeLanguage(newLang)
-        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch {}
+        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch { }
     }
 
     const handleRoleSelect = (roleId: UserRole) => {
@@ -204,7 +205,7 @@ function RegisterContent() {
             return
         }
 
-                if (otp === '123456') { // Simulate OTP verification
+        if (otp === '123456') { // Simulate OTP verification
             // If consumer, skip wallet step and register immediately
             if (selectedRole === 'consumer') {
                 try {
@@ -296,7 +297,7 @@ function RegisterContent() {
                             <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
                             <div className="flex items-center space-x-2">
                                 <span className="text-2xl">🌾</span>
-                                <span className="text-xl font-bold text-gray-900">
+                                <span className="text-2xl font-bold text-gray-900">
                                     {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                                 </span>
                             </div>
@@ -306,9 +307,10 @@ function RegisterContent() {
                             <LogoutButton />
                             <button
                                 onClick={toggleLanguage}
-                                className="bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
+                                className="flex items-center space-x-1 bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
                             >
-                                {currentLang === 'en' ? 'हिंदी' : 'English'}
+                                <GlobeAltIcon className="w-4 h-4" />
+                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
                             </button>
                         </div>
                     </div>
@@ -539,14 +541,14 @@ function RegisterContent() {
                                                     disabled={isLoading}
                                                     className={`bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-lg font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 >
-                                                {isLoading ? (
-                                                    <span className="loading-dots">
-                                                        {currentLang === 'en' ? 'Connecting' : 'कनेक्ट हो रहा है'}
-                                                    </span>
-                                                ) : (
-                                                    currentLang === 'en' ? 'Connect MetaMask' : 'MetaMask कनेक्ट करें'
-                                                )}
-                                            </button>
+                                                    {isLoading ? (
+                                                        <span className="loading-dots">
+                                                            {currentLang === 'en' ? 'Connecting' : 'कनेक्ट हो रहा है'}
+                                                        </span>
+                                                    ) : (
+                                                        currentLang === 'en' ? 'Connect MetaMask' : 'MetaMask कनेक्ट करें'
+                                                    )}
+                                                </button>
 
                                             </div>
                                             {/* Allow skipping wallet connection — registration will still proceed using phone-derived id */}
@@ -582,7 +584,7 @@ function RegisterContent() {
                                                             // Use role returned by server (saved profile) to redirect reliably
                                                             console.log('Registered (skip) saved profile:', saved)
                                                             // ensure local context updated
-                                                            try { setLocalUser(saved) } catch (e) {}
+                                                            try { setLocalUser(saved) } catch (e) { }
                                                             await safeReplace(`/dashboard/${saved.role}`)
                                                         } catch (err) {
                                                             console.error('Registration skipped wallet error:', err)

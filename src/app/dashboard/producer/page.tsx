@@ -16,7 +16,8 @@ import {
     BeakerIcon,
     UserGroupIcon,
     ArrowRightIcon,
-    TagIcon
+    TagIcon,
+    ShoppingCartIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
 
@@ -34,7 +35,7 @@ export default function ProducerDashboard() {
             router.push('/')
         }
     }, [user, router, loading])
-    
+
     useEffect(() => {
         if (user) setLoading(false)
     }, [user])
@@ -120,69 +121,69 @@ export default function ProducerDashboard() {
             action: currentLang === 'en' ? 'View Details' : 'विवरण देखें'
         }
     ]
-const [weatherData, setWeatherData] = useState({
-  temperature: '—',
-  humidity: '—',
-  rainfall: '—',
-  condition: currentLang === 'en' ? 'Loading...' : 'लोड हो रहा है...',
-  city: currentLang === 'en' ? 'Loading...' : 'लोड हो रहा है...'
-})
+    const [weatherData, setWeatherData] = useState({
+        temperature: '—',
+        humidity: '—',
+        rainfall: '—',
+        condition: currentLang === 'en' ? 'Loading...' : 'लोड हो रहा है...',
+        city: currentLang === 'en' ? 'Loading...' : 'लोड हो रहा है...'
+    })
 
-useEffect(() => {
-  let mounted = true
+    useEffect(() => {
+        let mounted = true
 
-  async function loadWeather() {
-    try {
-      let lat: number | null = null
-      let lon: number | null = null
+        async function loadWeather() {
+            try {
+                let lat: number | null = null
+                let lon: number | null = null
 
-      // try to get browser geolocation with a short timeout
-      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-        await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              lat = pos.coords.latitude
-              lon = pos.coords.longitude
-              resolve(true)
-            },
-            () => resolve(true),
-            { timeout: 5000 }
-          )
-        })
-      }
+                // try to get browser geolocation with a short timeout
+                if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+                    await new Promise((resolve) => {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                lat = pos.coords.latitude
+                                lon = pos.coords.longitude
+                                resolve(true)
+                            },
+                            () => resolve(true),
+                            { timeout: 5000 }
+                        )
+                    })
+                }
 
-      const params = new URLSearchParams()
-      if (lat && lon) {
-        params.set('lat', String(lat))
-        params.set('lon', String(lon))
-      } else {
-        // fallback city
-        params.set('city', 'New Delhi')
-      }
+                const params = new URLSearchParams()
+                if (lat && lon) {
+                    params.set('lat', String(lat))
+                    params.set('lon', String(lon))
+                } else {
+                    // fallback city
+                    params.set('city', 'New Delhi')
+                }
 
-      const resp = await fetch(`/api/weather?${params.toString()}`)
-      if (!mounted) return
+                const resp = await fetch(`/api/weather?${params.toString()}`)
+                if (!mounted) return
 
-      if (resp.ok) {
-        const json = await resp.json()
-        setWeatherData({
-          temperature: json.temperature ?? '—',
-          humidity: json.humidity ?? '—',
-          rainfall: json.rainfall ?? '—',
-          condition: json.condition ?? (currentLang === 'en' ? 'Unknown' : 'अज्ञात'),
-          city: json.location?.name ?? json.city ?? (currentLang === 'en' ? 'Unknown' : 'अज्ञात')
-        })
-      } else {
-        console.error('Weather fetch error', resp.status)
-      }
-    } catch (err) {
-      console.error('Failed to load weather', err)
-    }
-  }
+                if (resp.ok) {
+                    const json = await resp.json()
+                    setWeatherData({
+                        temperature: json.temperature ?? '—',
+                        humidity: json.humidity ?? '—',
+                        rainfall: json.rainfall ?? '—',
+                        condition: json.condition ?? (currentLang === 'en' ? 'Unknown' : 'अज्ञात'),
+                        city: json.location?.name ?? json.city ?? (currentLang === 'en' ? 'Unknown' : 'अज्ञात')
+                    })
+                } else {
+                    console.error('Weather fetch error', resp.status)
+                }
+            } catch (err) {
+                console.error('Failed to load weather', err)
+            }
+        }
 
-  loadWeather()
-  return () => { mounted = false }
-}, [currentLang])
+        loadWeather()
+        return () => { mounted = false }
+    }, [currentLang])
 
 
     if (!user) {
@@ -198,7 +199,7 @@ useEffect(() => {
                         <div className="flex items-center space-x-4">
                             <Link href="/" className="flex items-center space-x-2">
                                 <span className="text-2xl">🌾</span>
-                                <span className="text-xl font-bold text-gray-900">
+                                <span className="text-2xl font-bold text-gray-900">
                                     {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                                 </span>
                             </Link>
@@ -395,67 +396,69 @@ useEffect(() => {
                                 </h3>
                             </div>
                             <div className="space-y-3">
-    {/* City Name */}
-    <div className="flex justify-between">
-        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-            {currentLang === 'en' ? 'City' : 'शहर'}
-        </span>
-        <span className="text-sm font-medium">{weatherData.city}</span>
-    </div>
+                                {/* City Name */}
+                                <div className="flex justify-between">
+                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        {currentLang === 'en' ? 'City' : 'शहर'}
+                                    </span>
+                                    <span className="text-sm font-medium">{weatherData.city}</span>
+                                </div>
 
-    {/* Temperature */}
-    <div className="flex justify-between">
-        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-            {currentLang === 'en' ? 'Temperature' : 'तापमान'}
-        </span>
-        <span className="text-sm font-medium">{weatherData.temperature}</span>
-    </div>
+                                {/* Temperature */}
+                                <div className="flex justify-between">
+                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        {currentLang === 'en' ? 'Temperature' : 'तापमान'}
+                                    </span>
+                                    <span className="text-sm font-medium">{weatherData.temperature}</span>
+                                </div>
 
-    {/* Humidity */}
-    <div className="flex justify-between">
-        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-            {currentLang === 'en' ? 'Humidity' : 'आर्द्रता'}
-        </span>
-        <span className="text-sm font-medium">{weatherData.humidity}</span>
-    </div>
+                                {/* Humidity */}
+                                <div className="flex justify-between">
+                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        {currentLang === 'en' ? 'Humidity' : 'आर्द्रता'}
+                                    </span>
+                                    <span className="text-sm font-medium">{weatherData.humidity}</span>
+                                </div>
 
-    {/* Rainfall */}
-    <div className="flex justify-between">
-        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-            {currentLang === 'en' ? 'Rainfall' : 'वर्षा'}
-        </span>
-        <span className="text-sm font-medium">{weatherData.rainfall}</span>
-    </div>
+                                {/* Rainfall */}
+                                <div className="flex justify-between">
+                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        {currentLang === 'en' ? 'Rainfall' : 'वर्षा'}
+                                    </span>
+                                    <span className="text-sm font-medium">{weatherData.rainfall}</span>
+                                </div>
 
-    {/* Condition */}
-    <div className="flex justify-between">
-        <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-            {currentLang === 'en' ? 'Condition' : 'स्थिति'}
-        </span>
-        <span className="text-sm font-medium">{weatherData.condition}</span>
-    </div>
-</div>
+                                {/* Condition */}
+                                <div className="flex justify-between">
+                                    <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                        {currentLang === 'en' ? 'Condition' : 'स्थिति'}
+                                    </span>
+                                    <span className="text-sm font-medium">{weatherData.condition}</span>
+                                </div>
+                            </div>
 
                         </div>
 
-                                                {/* Marketplace Quick Card (moved from quick actions) */}
-                                                <div className="bg-white p-6 rounded-lg shadow-sm border mb-4">
-                                                    <div className="flex items-center mb-4">
-                                                        <TagIcon className="w-6 h-6 text-orange-600 mr-2" />
-                                                        <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                            {currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}
-                                                        </h3>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600 mb-4">
-                                                        {currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें'}
-                                                    </p>
-                                                    <Link href="/marketplace" className="inline-flex items-center justify-center w-full rounded-lg bg-orange-500 px-4 py-2 text-white hover:bg-orange-600">
-                                                        {currentLang === 'en' ? 'Open Marketplace' : 'मार्केटप्लेस खोलें'}
-                                                    </Link>
-                                                </div>
+                        {/* Marketplace Quick Card (moved from quick actions) */}
+                        <div className="bg-white p-6 rounded-lg shadow-sm border mb-4">
+                            <div className="flex items-center mb-4">
+                                <div className="p-2 rounded-lg bg-purple-50 mr-2">
+                                    <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    {currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}
+                                </h3>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-4">
+                                {currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें'}
+                            </p>
+                            <Link href="/marketplace" className="inline-flex items-center justify-center w-full rounded-lg bg-orange-500 px-4 py-2 text-white hover:bg-orange-600">
+                                {currentLang === 'en' ? 'Open Marketplace' : 'मार्केटप्लेस खोलें'}
+                            </Link>
+                        </div>
 
-                                                {/* Government Information */}
-                                                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        {/* Government Information */}
+                        <div className="bg-white p-6 rounded-lg shadow-sm border">
                             <div className="flex items-center mb-4">
                                 <BanknotesIcon className="w-6 h-6 text-green-600 mr-2" />
                                 <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>

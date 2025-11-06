@@ -9,8 +9,7 @@ import {
     CubeTransparentIcon,
     UserGroupIcon,
     ChartBarIcon,
-    QrCodeIcon,
-    ArrowRightIcon
+    QrCodeIcon
 } from '@heroicons/react/24/outline'
 
 export default function HomePage() {
@@ -100,7 +99,7 @@ export default function HomePage() {
                                 <span className="text-2xl">🌾</span>
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold text-white">
+                                <h1 className="text-2xl font-bold text-white">
                                     {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                                 </h1>
                                 <p className="text-xs text-white opacity-90">
@@ -151,10 +150,9 @@ export default function HomePage() {
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                         <Link
                             href="/register"
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center space-x-2"
+                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
                         >
-                            <span>{t('register')}</span>
-                            <ArrowRightIcon className="w-5 h-5" />
+                            {t('register')}
                         </Link>
 
                         <Link
