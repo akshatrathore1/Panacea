@@ -117,32 +117,48 @@ export const SUPPLY_CHAIN_ABI = [
         "inputs": [
             {
                 "internalType": "string",
-                "name": "_batchId",
+                "name": "_cropType",
                 "type": "string"
             },
             {
                 "internalType": "string",
-                "name": "_productType",
+                "name": "_variety",
                 "type": "string"
             },
             {
                 "internalType": "string",
-                "name": "_origin",
+                "name": "_farmLocation",
                 "type": "string"
             },
             {
                 "internalType": "uint256",
-                "name": "_harvestDate",
+                "name": "_weight",
+                "type": "uint256"
+            },
+            {
+                "internalType": "enum SupplyChain.QualityGrade",
+                "name": "_qualityGrade",
+                "type": "uint8"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_pricePerKg",
                 "type": "uint256"
             },
             {
                 "internalType": "string",
-                "name": "_additionalInfo",
+                "name": "_additionalData",
                 "type": "string"
             }
         ],
         "name": "createBatch",
-        "outputs": [],
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
         "stateMutability": "nonpayable",
         "type": "function"
     },
@@ -303,7 +319,7 @@ export const SUPPLY_CHAIN_ABI = [
                 "components": [
                     {
                         "internalType": "address",
-                        "name": "userAddress",
+                        "name": "wallet",
                         "type": "address"
                     },
                     {
@@ -318,18 +334,23 @@ export const SUPPLY_CHAIN_ABI = [
                     },
                     {
                         "internalType": "string",
+                        "name": "phone",
+                        "type": "string"
+                    },
+                    {
+                        "internalType": "string",
                         "name": "location",
                         "type": "string"
                     },
                     {
-                        "internalType": "uint256",
-                        "name": "registeredAt",
-                        "type": "uint256"
+                        "internalType": "bool",
+                        "name": "verified",
+                        "type": "bool"
                     },
                     {
-                        "internalType": "bool",
-                        "name": "isActive",
-                        "type": "bool"
+                        "internalType": "uint256",
+                        "name": "registrationTime",
+                        "type": "uint256"
                     }
                 ],
                 "internalType": "struct SupplyChain.User",
@@ -343,14 +364,19 @@ export const SUPPLY_CHAIN_ABI = [
     {
         "inputs": [
             {
+                "internalType": "enum SupplyChain.UserRole",
+                "name": "_role",
+                "type": "uint8"
+            },
+            {
                 "internalType": "string",
                 "name": "_name",
                 "type": "string"
             },
             {
-                "internalType": "enum SupplyChain.UserRole",
-                "name": "_role",
-                "type": "uint8"
+                "internalType": "string",
+                "name": "_phone",
+                "type": "string"
             },
             {
                 "internalType": "string",
@@ -428,12 +454,13 @@ export const blockchainHelpers = {
     // User registration
     async registerUser(
         signer: ethers.Signer,
+        role: number,
         name: string,
-        role: number, // 0: Producer, 1: Intermediary, 2: Retailer, 3: Consumer
+        phone: string,
         location: string
     ) {
         const contract = getContract(signer)
-        const tx = await contract.registerUser(name, role, location)
+        const tx = await contract.registerUser(role, name, phone, location)
         return await tx.wait()
     },
 
@@ -446,11 +473,13 @@ export const blockchainHelpers = {
     // Create a new batch
     async createBatch(
         signer: ethers.Signer,
-        batchId: string,
-        productType: string,
-        origin: string,
-        harvestDate: number,
-        additionalInfo: string
+        cropType: string,
+        variety: string,
+        farmLocation: string,
+        weightKg: number,
+        qualityGrade: number,
+        pricePerKgWei: ethers.BigNumberish,
+        additionalData: string
     ) {
         // If contract address is not configured to a valid Ethereum address, skip on-chain write.
         const validAddress = /^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS)
@@ -460,7 +489,15 @@ export const blockchainHelpers = {
         }
 
         const contract = getContract(signer)
-        const tx = await contract.createBatch(batchId, productType, origin, harvestDate, additionalInfo)
+        const tx = await contract.createBatch(
+            cropType,
+            variety,
+            farmLocation,
+            weightKg,
+            qualityGrade,
+            pricePerKgWei,
+            additionalData
+        )
         return await tx.wait()
     },
 
@@ -566,19 +603,28 @@ export const NETWORKS = {
 }
 
 // Error handling
-export const handleContractError = (error: any): string => {
-    if (error.code === 'UNPREDICTABLE_GAS_LIMIT') {
+export const handleContractError = (error: unknown): string => {
+    const errorCode = typeof error === 'object' && error !== null && 'code' in error
+        ? (error as { code?: string }).code
+        : undefined
+    const message = error instanceof Error
+        ? error.message
+        : (typeof error === 'object' && error !== null && 'message' in error
+            ? String((error as { message?: unknown }).message)
+            : '')
+
+    if (errorCode === 'UNPREDICTABLE_GAS_LIMIT') {
         return 'Transaction may fail. Please check your inputs and try again.'
     }
-    if (error.code === 'INSUFFICIENT_FUNDS') {
+    if (errorCode === 'INSUFFICIENT_FUNDS') {
         return 'Insufficient funds for transaction. Please add ETH to your wallet.'
     }
-    if (error.message?.includes('user rejected transaction')) {
+    if (message?.includes('user rejected transaction')) {
         return 'Transaction was cancelled by user.'
     }
-    if (error.message?.includes('already exists')) {
+    if (message?.includes('already exists')) {
         return 'This batch ID already exists. Please use a different ID.'
     }
 
-    return error.message || 'An unknown error occurred.'
+    return message || 'An unknown error occurred.'
 }
