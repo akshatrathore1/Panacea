@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
     MagnifyingGlassIcon,
     FunnelIcon,
@@ -12,30 +12,65 @@ import {
     UserIcon,
     PhoneIcon,
     TagIcon,
-    GlobeAltIcon,
     ChatBubbleLeftRightIcon,
     HeartIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
 import { formatNumber } from '@/lib/format'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
+
+type ProducerProfile = {
+    name: string
+    address: string
+    phone: string
+}
+
+type MarketplaceListing = {
+    id: string
+    name: string
+    category: string
+    description: string
+    quantity: number
+    unit: string
+    pricePerUnit: number
+    totalPrice: number
+    harvestDate: string | null
+    status: string
+    createdAt: string
+    images: string[]
+    producer: ProducerProfile
+    verified: boolean
+    organic: boolean
+    postedDate: string
+    location: string
+}
+
+type MarketplaceApiPayload = Partial<Omit<MarketplaceListing, 'producer' | 'images'>> & {
+    producer?: unknown
+    images?: unknown
+    _id?: string
+    documentId?: string
+    price?: unknown
+} & Record<string, unknown>
+
+const isProducerPayload = (value: unknown): value is Partial<Record<keyof ProducerProfile, unknown>> => {
+    return typeof value === 'object' && value !== null
+}
+
+const asString = (value: unknown) => (typeof value === 'string' ? value : '')
 
 export default function MarketplacePage() {
-    const { t, i18n } = useTranslation()
-    const currentLang = i18n.language || 'en'
+    const { language: currentLang } = useLanguage()
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCrop, setSelectedCrop] = useState('')
     const [selectedLocation, setSelectedLocation] = useState('')
     const [priceRange, setPriceRange] = useState('')
     const [sortBy, setSortBy] = useState('latest')
 
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        i18n.changeLanguage(newLang)
-    }
-
     // Listings state (loaded from the marketplace API which stores
     // 'marketplace_products' created by the List-for-sale flow)
-    const [listings, setListings] = useState<any[]>([])
+    const [listings, setListings] = useState<MarketplaceListing[]>([])
     const [isLoadingListings, setIsLoadingListings] = useState(true)
 
     useEffect(() => {
@@ -45,32 +80,49 @@ export default function MarketplacePage() {
             try {
                 const resp = await fetch('/api/marketplace/products')
                 if (!resp.ok) throw new Error(`Marketplace API returned ${resp.status}`)
-                const products = await resp.json()
+                const products = (await resp.json()) as MarketplaceApiPayload[]
 
-                // Map API product shape to the UI's expected listing fields
-                const mapped = (products || []).map((p: any) => ({
-                    id: p.id || p._id || p.documentId || '',
-                    // essential fields for the marketplace card
-                    name: String(p.name || ''),
-                    category: String(p.category || ''),
-                    description: String(p.description || ''),
-                    quantity: Number(p.quantity || 0),
-                    unit: String(p.unit || 'kg'),
-                    pricePerUnit: Number(p.price || 0),
-                    totalPrice: Number(p.price || 0) * Number(p.quantity || 0),
-                    harvestDate: p.harvestDate || null,
-                    status: p.status || 'active',
-                    createdAt: p.createdAt || new Date().toISOString(),
-                    images: p.images || [],
-                    // normalize producer to a simple object with the fields we use in UI
-                    producer: (p.producer && typeof p.producer === 'object')
-                        ? { name: p.producer.name || '', address: p.producer.address || '', phone: p.producer.phone || '' }
-                        : { name: '', address: String(p.producer || ''), phone: '' },
-                    verified: p.verified || false,
-                    organic: p.organic || false,
-                    // posted date for display
-                    postedDate: p.createdAt || p.postedDate || new Date().toISOString()
-                }))
+                const mapped = (Array.isArray(products) ? products : []).map((product) => {
+                    const createdAt = typeof product.createdAt === 'string'
+                        ? product.createdAt
+                        : new Date().toISOString()
+                    const quantity = Number(product.quantity ?? 0)
+                    const pricePerUnit = Number(product.pricePerUnit ?? product.price ?? 0)
+                    const images = Array.isArray(product.images)
+                        ? product.images.filter((image): image is string => typeof image === 'string')
+                        : []
+                    const producerSource: ProducerProfile = isProducerPayload(product.producer)
+                        ? {
+                            name: asString(product.producer.name),
+                            address: asString(product.producer.address),
+                            phone: asString(product.producer.phone)
+                        }
+                        : {
+                            name: '',
+                            address: asString(product.producer),
+                            phone: ''
+                        }
+
+                    return {
+                        id: String(product.id ?? product._id ?? product.documentId ?? ''),
+                        name: String(product.name ?? ''),
+                        category: String(product.category ?? ''),
+                        description: String(product.description ?? ''),
+                        quantity,
+                        unit: String(product.unit ?? 'kg'),
+                        pricePerUnit,
+                        totalPrice: pricePerUnit * quantity,
+                        harvestDate: typeof product.harvestDate === 'string' ? product.harvestDate : null,
+                        status: typeof product.status === 'string' ? product.status : 'active',
+                        createdAt,
+                        images,
+                        producer: producerSource,
+                        verified: Boolean(product.verified),
+                        organic: Boolean(product.organic),
+                        postedDate: typeof product.postedDate === 'string' ? product.postedDate : createdAt,
+                        location: typeof product.location === 'string' ? product.location : '',
+                    } as MarketplaceListing
+                })
 
                 if (mounted) setListings(mapped)
             } catch (err) {
@@ -122,7 +174,7 @@ export default function MarketplacePage() {
         const matchesCrop = selectedCrop === '' || String(listing.category || '').toLowerCase() === selectedCrop
 
         const matchesLocation = selectedLocation === '' ||
-            String(listing.category || '').toLowerCase().includes(selectedLocation)
+            listing.location.toLowerCase().includes(selectedLocation)
 
         const matchesPrice = priceRange === '' || (() => {
             if (priceRange === '0-2000') return listing.pricePerUnit <= 2000
@@ -135,11 +187,11 @@ export default function MarketplacePage() {
         return matchesSearch && matchesCrop && matchesLocation && matchesPrice
     })
 
-    const handleInquiry = (listing: any) => {
+    const handleInquiry = (listing: MarketplaceListing) => {
         // Simulate inquiry functionality
         alert(currentLang === 'en'
-            ? `Inquiry sent to ${listing.farmerName}! They will contact you soon.`
-            : `${listing.farmerName} को पूछताछ भेजी गई! वे जल्द ही आपसे संपर्क करेंगे।`
+            ? `Inquiry sent to ${listing.producer?.name || listing.name}! They will contact you soon.`
+            : `${listing.producer?.name || listing.name} को पूछताछ भेजी गई! वे जल्द ही आपसे संपर्क करेंगे।`
         )
     }
 
@@ -158,14 +210,7 @@ export default function MarketplacePage() {
 
                         <div className="flex items-center space-x-4">
                             <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
-                                data-local-language-toggle
-                            >
-                                <GlobeAltIcon className="w-5 h-5" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
+                            <LanguageToggle />
 
                         </div>
                     </div>
@@ -258,7 +303,9 @@ export default function MarketplacePage() {
 
                     <div className="mt-4 flex items-center justify-between">
                         <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                            {filteredListings.length} {currentLang === 'en' ? 'listings found' : 'सूचियां मिलीं'}
+                            {isLoadingListings
+                                ? (currentLang === 'en' ? 'Loading listings…' : 'सूचियां लोड हो रही हैं…')
+                                : `${filteredListings.length} ${currentLang === 'en' ? 'listings found' : 'सूचियां मिलीं'}`}
                         </p>
                         <button className={`flex items-center space-x-1 text-green-600 hover:text-green-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                             <FunnelIcon className="w-4 h-4" />
@@ -272,16 +319,21 @@ export default function MarketplacePage() {
                     {filteredListings.map((listing) => (
                         <div key={listing.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-shadow">
                             {/* Image (use uploaded image if available; fall back to placeholder) */}
-                            <div className="relative">
-                                <div className="aspect-video bg-gray-100 rounded-t-xl flex items-center justify-center overflow-hidden">
-                                    {listing.images && listing.images.length > 0 ? (
-                                        // Listing images may be stored as URLs in Firestore; render the first one
-                                        // Use simple img tag to avoid Next/Image optimizations on unknown remote hosts.
-                                        <img src={String(listing.images[0])} alt={listing.name || listing.category} className="w-full h-full object-cover" />
-                                    ) : (
+                            <div className="relative aspect-video bg-gray-100 rounded-t-xl overflow-hidden">
+                                {listing.images && listing.images.length > 0 ? (
+                                    <Image
+                                        src={String(listing.images[0])}
+                                        alt={listing.name || listing.category || 'Marketplace listing image'}
+                                        fill
+                                        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+                                        className="object-cover"
+                                        unoptimized
+                                    />
+                                ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center">
                                         <TagIcon className="w-12 h-12 text-gray-400" />
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                                 {listing.organic && (
                                     <div className="absolute top-3 left-3">
                                         <span className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
@@ -356,7 +408,7 @@ export default function MarketplacePage() {
                                             {currentLang === 'en' ? 'Inquire Now' : 'पूछताछ करें'}
                                         </button>
                                         <a
-                                            href={`tel:${(listing.producer && listing.producer.phone) || ''}`}
+                                            href={`tel:${listing.producer?.phone || ''}`}
                                             className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg"
                                         >
                                             <PhoneIcon className="w-5 h-5" />

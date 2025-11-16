@@ -1,29 +1,55 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWeb3 } from '@/components/Providers'
-import { useTranslation } from 'react-i18next'
 import {
-    UserIcon,
     ShoppingBagIcon,
     HeartIcon,
-    ClockIcon,
     QrCodeIcon,
-    MapPinIcon,
     StarIcon,
     BellIcon,
-    GlobeAltIcon,
-    AdjustmentsHorizontalIcon
+    AdjustmentsHorizontalIcon,
+    ArrowRightIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
+import type { LanguageCode } from '@/lib/language'
+
+const CONSUMER_NOTIFICATION_TEMPLATES = [
+    {
+        id: 'NOT-001',
+        messages: {
+            en: 'Price dropped for Organic Apples - Now ₹120/kg',
+            hi: 'जैविक सेब की कीमत कम हो गई - अब ₹120/किग्रा'
+        },
+        timestamps: {
+            en: '2 hours ago',
+            hi: '2 घंटे पहले'
+        },
+        isNew: true
+    },
+    {
+        id: 'NOT-002',
+        messages: {
+            en: 'New organic vegetables available from Amit Singh',
+            hi: 'अमित सिंह से नई जैविक सब्जियां उपलब्ध हैं'
+        },
+        timestamps: {
+            en: '1 day ago',
+            hi: '1 दिन पहले'
+        },
+        isNew: false
+    }
+]
 
 export default function ConsumerDashboard() {
-    const { i18n } = useTranslation()
     const router = useRouter()
     const { user } = useWeb3()
-    const [currentLang, setCurrentLang] = useState('en')
+    const { language: currentLang } = useLanguage()
+    const currentLangRef = useRef<LanguageCode>(currentLang)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -36,12 +62,6 @@ export default function ConsumerDashboard() {
             router.push('/')
         }
     }, [user, router, loading])
-
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
-        i18n.changeLanguage(newLang)
-    }
 
     // Mock data for consumer activities
     const ratingsProvided = [
@@ -67,6 +87,12 @@ export default function ConsumerDashboard() {
         }
     ]
 
+    const roleLabel = currentLang === 'en' ? 'Consumer' : 'उपभोक्ता'
+
+    const welcomeSubtitle = currentLang === 'en'
+        ? 'Discover trusted produce and track your purchases'
+        : 'विश्वसनीय उत्पाद खोजें और अपनी खरीदारी को ट्रैक करें'
+
     const stats = {
         totalPurchases: 23,
         savedProducts: 8,
@@ -85,7 +111,6 @@ export default function ConsumerDashboard() {
             price: 225,
             purchaseDate: '2024-01-12',
             qualityScore: 9.2,
-            status: 'collected',
             rating: 5
         },
         {
@@ -98,7 +123,6 @@ export default function ConsumerDashboard() {
             price: 170,
             purchaseDate: '2024-01-10',
             qualityScore: 9.5,
-            status: 'collected',
             rating: 5
         },
         {
@@ -111,7 +135,6 @@ export default function ConsumerDashboard() {
             price: 195,
             purchaseDate: '2024-01-14',
             qualityScore: 8.8,
-            status: 'ready_for_pickup',
             rating: null
         }
     ]
@@ -124,182 +147,337 @@ export default function ConsumerDashboard() {
             retailer: 'Nature Fresh Store',
             price: 120,
             location: 'Shimla, HP',
-            qualityScore: 9.0,
-            inStock: true
+            qualityScore: 9.0
         },
         {
-            batchId: 'KA-MIL-2024-016',
-            product: 'Fresh Milk',
-            farmer: 'Dairy Farm Co-op',
-            retailer: 'Pure Dairy',
-            price: 55,
-            location: 'Amul, Gujarat',
-            qualityScore: 9.3,
-            inStock: true
+            batchId: 'KA-JAG-2024-016',
+            product: 'Organic Jaggery',
+            farmer: 'Shakti Farmer Collective',
+            retailer: 'Manduva Naturals',
+            price: 95,
+            location: 'Kolhapur, Maharashtra',
+            qualityScore: 9.3
         }
     ]
 
-    const notifications = [
+    const quickActions = [
         {
-            id: 'NOT-001',
-            type: 'price_drop',
-            message: currentLang === 'en'
-                ? 'Price dropped for Organic Apples - Now ₹120/kg'
-                : 'ऑर्गेनिक सेब की कीमत कम हो गई - अब ₹120/किग्रा',
-            timestamp: '2 hours ago',
-            isNew: true
+            id: 'scan-qr',
+            title: {
+                en: 'Scan QR Code',
+                hi: 'QR कोड स्कैन करें'
+            },
+            description: {
+                en: 'Verify product authenticity before you buy',
+                hi: 'खरीदने से पहले उत्पाद की प्रामाणिकता सत्यापित करें'
+            },
+            icon: QrCodeIcon,
+            color: 'bg-indigo-500'
         },
         {
-            id: 'NOT-002',
-            type: 'new_product',
-            message: currentLang === 'en'
-                ? 'New organic vegetables available from Amit Singh'
-                : 'अमित सिंह से नई जैविक सब्जियां उपलब्ध हैं',
-            timestamp: '1 day ago',
-            isNew: false
+            id: 'find-stores',
+            title: {
+                en: 'Find Local Stores',
+                hi: 'स्थानीय स्टोर खोजें'
+            },
+            description: {
+                en: 'Discover trusted retailers near you',
+                hi: 'अपने आसपास विश्वसनीय रिटेलर खोजें'
+            },
+            icon: AdjustmentsHorizontalIcon,
+            color: 'bg-green-500'
         }
     ]
 
-    const [showNotificationDot, setShowNotificationDot] = useState(notifications.some((notification) => notification.isNew))
-    const notificationsRef = useRef<HTMLDivElement | null>(null)
+    const notificationsUserToken = useMemo(() => {
+        const keySource = (user?.address || user?.phone || 'anon').toString().toLowerCase()
+        return keySource.replace(/[^a-z0-9:\-]/g, '-')
+    }, [user?.address, user?.phone])
+
+    const notificationsStorageKey = useMemo(
+        () => `notifications-read-consumer-${notificationsUserToken}`,
+        [notificationsUserToken]
+    )
+    const notificationsSessionKey = useMemo(
+        () => `notifications-session-consumer-${notificationsUserToken}`,
+        [notificationsUserToken]
+    )
+
+    const buildNotifications = (lang: LanguageCode) =>
+        CONSUMER_NOTIFICATION_TEMPLATES.map((template) => ({
+            id: template.id,
+            message: template.messages[lang] ?? template.messages.en,
+            timestamp: template.timestamps[lang] ?? template.timestamps.en,
+            isNew: template.isNew
+        }))
+
+    const [notifications, setNotifications] = useState(() => buildNotifications(currentLang))
+    const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+    const notificationsButtonRef = useRef<HTMLButtonElement | null>(null)
+    const notificationsPanelRef = useRef<HTMLDivElement | null>(null)
+    const [hasSeenNotifications, setHasSeenNotifications] = useState(false)
 
     const handleNotificationsClick = () => {
-        if (notificationsRef.current) {
-            notificationsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            notificationsRef.current.focus?.()
-        }
-        setShowNotificationDot(false)
+        setShowNotificationPopup((prev) => !prev)
     }
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'collected': return 'bg-green-100 text-green-800'
-            case 'ready_for_pickup': return 'bg-indigo-100 text-indigo-800'
-            case 'pending': return 'bg-yellow-100 text-yellow-800'
-            default: return 'bg-gray-100 text-gray-800'
-        }
-    }
+    useEffect(() => {
+        setNotifications((prev) =>
+            prev.map((notification) => {
+                const template = CONSUMER_NOTIFICATION_TEMPLATES.find((t) => t.id === notification.id)
+                if (!template) return notification
+                return {
+                    ...notification,
+                    message: template.messages[currentLang] ?? template.messages.en,
+                    timestamp: template.timestamps[currentLang] ?? template.timestamps.en
+                }
+            })
+        )
+    }, [currentLang])
 
-    const getStatusText = (status: string) => {
-        const statusMap = {
-            'collected': currentLang === 'en' ? 'Collected' : 'संग्रहित',
-            'ready_for_pickup': currentLang === 'en' ? 'Ready for Pickup' : 'पिकअप के लिए तैयार',
-            'pending': currentLang === 'en' ? 'Pending' : 'लंबित'
+    useEffect(() => {
+        currentLangRef.current = currentLang
+    }, [currentLang])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const storedStatus = window.localStorage.getItem(notificationsStorageKey)
+        const sessionStatus = window.sessionStorage.getItem(notificationsSessionKey)
+
+        if (storedStatus === 'dismissed' || sessionStatus === 'dismissed') {
+            setHasSeenNotifications(true)
+            setNotifications((prev) => prev.map((notification) => ({ ...notification, isNew: false })))
+        } else {
+            setHasSeenNotifications(false)
+            if (!sessionStatus) {
+                window.sessionStorage.setItem(notificationsSessionKey, 'pending')
+            }
         }
-        return statusMap[status as keyof typeof statusMap] || status
-    }
+    }, [notificationsStorageKey, notificationsSessionKey])
+
+    useEffect(() => {
+        setNotifications(buildNotifications(currentLangRef.current))
+    }, [notificationsStorageKey])
+
+    useEffect(() => {
+        if (!showNotificationPopup) return
+        setNotifications((prev) => prev.map((notification) => ({ ...notification, isNew: false })))
+        setHasSeenNotifications(true)
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(notificationsStorageKey, 'dismissed')
+            window.sessionStorage.setItem(notificationsSessionKey, 'dismissed')
+        }
+    }, [showNotificationPopup, notificationsStorageKey, notificationsSessionKey])
+
+    useEffect(() => {
+        if (!showNotificationPopup) return
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node
+            if (notificationsPanelRef.current?.contains(target)) return
+            if (notificationsButtonRef.current?.contains(target)) return
+            setShowNotificationPopup(false)
+        }
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowNotificationPopup(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('keydown', handleEscape)
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('keydown', handleEscape)
+        }
+    }, [showNotificationPopup])
+
+    const hasUnreadNotifications = !hasSeenNotifications && notifications.some((notification) => notification.isNew)
 
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <header className="bg-white shadow-sm">
+            <header className="bg-white shadow-sm border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                                <UserIcon className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className={`text-2xl font-bold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Consumer Dashboard' : 'उपभोक्ता डैशबोर्ड'}
-                                </h1>
-                                <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en'
-                                        ? `Welcome back, ${user?.name ?? 'Priya Sharma'}!`
-                                        : `वापस स्वागत है, ${user?.name ?? 'प्रिया शर्मा'}!`}
-                                </p>
+                        <div className="flex items-center space-x-4">
+                            <Link href="/" className="flex items-center space-x-2">
+                                <span className="text-2xl">🌾</span>
+                                <span className="text-2xl font-bold text-gray-900">
+                                    {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
+                                </span>
+                            </Link>
+                            <div className="text-sm text-gray-500">
+                                <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
+                                    {roleLabel}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-4">
-                            <button
-                                type="button"
-                                onClick={handleNotificationsClick}
-                                className="relative rounded-full p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                aria-label={currentLang === 'en' ? 'View notifications' : 'अधिसूचनाएं देखें'}
-                            >
-                                <BellIcon className="w-6 h-6" />
-                                {showNotificationDot && (
-                                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500"></span>
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <button
+                                    ref={notificationsButtonRef}
+                                    type="button"
+                                    onClick={handleNotificationsClick}
+                                    className="relative rounded-full p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    aria-haspopup="true"
+                                    aria-expanded={showNotificationPopup}
+                                    aria-label={currentLang === 'en' ? 'View notifications' : 'अधिसूचनाएं देखें'}
+                                >
+                                    <BellIcon className="w-6 h-6" />
+                                    {hasUnreadNotifications && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500"></span>
+                                    )}
+                                </button>
+                                {showNotificationPopup && (
+                                    <div
+                                        ref={notificationsPanelRef}
+                                        className="absolute right-0 mt-3 w-80 rounded-xl border border-gray-200 bg-white shadow-lg z-50"
+                                    >
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <h3 className={`text-sm font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en' ? 'Notifications' : 'अधिसूचनाएं'}
+                                            </h3>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto py-2">
+                                            {notifications.length === 0 ? (
+                                                <p className="px-4 py-3 text-sm text-gray-500">
+                                                    {currentLang === 'en' ? 'No notifications yet' : 'अभी कोई अधिसूचना नहीं'}
+                                                </p>
+                                            ) : (
+                                                notifications.map((notification) => (
+                                                    <div
+                                                        key={notification.id}
+                                                        className={`px-4 py-3 text-sm ${notification.isNew ? 'bg-blue-50' : 'bg-white'} border-t border-gray-100 first:border-t-0`}
+                                                    >
+                                                        <p className={`text-gray-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                            {notification.message}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-gray-500">{notification.timestamp}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
                                 )}
-                            </button>
+                            </div>
                             <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1 rounded-md transition-colors"
-                                data-local-language-toggle
-                            >
-                                <GlobeAltIcon className="w-4 h-4" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
+                            <LanguageToggle />
                         </div>
                     </div>
                 </div>
             </header>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mb-8">
+                    <h1 className={`text-3xl font-bold text-gray-900 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                        {currentLang === 'en'
+                            ? user?.name
+                                ? `Welcome back, ${user.name}!`
+                                : 'Welcome back!'
+                            : user?.name
+                                ? `स्वागत है, ${user.name}!`
+                                : 'फिर से स्वागत है!'}
+                    </h1>
+                    <p className={`text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                        {welcomeSubtitle}
+                    </p>
+                </div>
+
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-indigo-100">
+                                <ShoppingBagIcon className="w-6 h-6 text-indigo-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Total Purchases' : 'कुल खरीदारी'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{stats.totalPurchases}</p>
                             </div>
-                            <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                                <ShoppingBagIcon className="w-6 h-6 text-indigo-600" />
-                            </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-pink-100">
+                                <HeartIcon className="w-6 h-6 text-pink-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Saved Products' : 'सेव किए गए उत्पाद'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{stats.savedProducts}</p>
                             </div>
-                            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-                                <HeartIcon className="w-6 h-6 text-pink-600" />
-                            </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-blue-100">
+                                <QrCodeIcon className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Tracked Items' : 'ट्रैक किए गए आइटम'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{stats.trackedItems}</p>
                             </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <QrCodeIcon className="w-6 h-6 text-blue-600" />
-                            </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-yellow-100">
+                                <StarIcon className="w-6 h-6 text-yellow-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Ratings Provided' : 'दी गई रेटिंग्स'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{stats.ratingsSubmitted}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <StarIcon className="w-6 h-6 text-yellow-600" />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Recent Purchases */}
-                    <div className="lg:col-span-2">
+                    {/* Main Column */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <section>
+                            <h2 className={`text-xl font-semibold mb-4 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                {currentLang === 'en' ? 'Quick Actions' : 'त्वरित कार्य'}
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {quickActions.map((action) => {
+                                    const ActionIcon = action.icon
+                                    return (
+                                        <div key={action.id} className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
+                                            <div className="flex items-start gap-4">
+                                                <div className={`p-2.5 rounded-lg ${action.color}`}>
+                                                    <ActionIcon className="w-5 h-5 text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className={`font-semibold text-gray-900 mb-1 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        {action.title[currentLang]}
+                                                    </h3>
+                                                    <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        {action.description[currentLang]}
+                                                    </p>
+                                                </div>
+                                                <ArrowRightIcon className="w-5 h-5 text-gray-300" />
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </section>
+
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b border-gray-200">
                                 <div className="flex justify-between items-center">
@@ -316,9 +494,6 @@ export default function ConsumerDashboard() {
                                             <div className="flex-1">
                                                 <div className="flex items-center space-x-3 mb-2">
                                                     <h3 className="font-semibold text-gray-900">{purchase.product}</h3>
-                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(purchase.status)}`}>
-                                                        {getStatusText(purchase.status)}
-                                                    </span>
                                                     <div className="flex items-center text-yellow-500">
                                                         <StarIcon className="w-4 h-4 fill-current" />
                                                         <span className="text-sm font-medium text-gray-700 ml-1">{purchase.qualityScore}</span>
@@ -342,7 +517,7 @@ export default function ConsumerDashboard() {
 
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center space-x-4">
-                                                {purchase.status === 'collected' && purchase.rating && (
+                                                {purchase.rating && (
                                                     <div className="flex items-center space-x-1">
                                                         <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                             {currentLang === 'en' ? 'Your rating:' : 'आपकी रेटिंग:'}
@@ -366,13 +541,7 @@ export default function ConsumerDashboard() {
                                                     <QrCodeIcon className="w-4 h-4" />
                                                     <span>{currentLang === 'en' ? 'Trace' : 'ट्रेस'}</span>
                                                 </Link>
-                                                {purchase.status === 'ready_for_pickup' && (
-                                                    <button className={`bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                                        <MapPinIcon className="w-4 h-4" />
-                                                        <span>{currentLang === 'en' ? 'View Pickup Info' : 'पिकअप जानकारी देखें'}</span>
-                                                    </button>
-                                                )}
-                                                {purchase.status === 'collected' && !purchase.rating && (
+                                                {!purchase.rating && (
                                                     <button className={`bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                         {currentLang === 'en' ? 'Rate Product' : 'उत्पाद रेट करें'}
                                                     </button>
@@ -387,29 +556,6 @@ export default function ConsumerDashboard() {
 
                     {/* Sidebar */}
                     <div className="space-y-6">
-                        {/* Notifications */}
-                        <div
-                            ref={notificationsRef}
-                            className="bg-white rounded-xl shadow-sm border"
-                            tabIndex={-1}
-                        >
-                            <div className="p-6 border-b border-gray-200">
-                                <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Notifications' : 'अधिसूचनाएं'}
-                                </h3>
-                            </div>
-                            <div className="p-6 space-y-4">
-                                {notifications.map((notification) => (
-                                    <div key={notification.id} className={`p-3 rounded-lg ${notification.isNew ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}>
-                                        <p className={`text-sm text-gray-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                            {notification.message}
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-1">{notification.timestamp}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
                         <div className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b border-gray-200">
                                 <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -450,12 +596,6 @@ export default function ConsumerDashboard() {
                                     <div key={product.batchId} className="border border-gray-200 rounded-lg p-4">
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-medium text-gray-900">{product.product}</h4>
-                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.inStock ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {product.inStock
-                                                    ? (currentLang === 'en' ? 'In Stock' : 'स्टॉक में')
-                                                    : (currentLang === 'en' ? 'Out of Stock' : 'स्टॉक समाप्त')
-                                                }
-                                            </span>
                                         </div>
                                         <p className="text-sm text-gray-600 mb-1">
                                             {currentLang === 'en' ? 'Farmer:' : 'किसान:'} {product.farmer}
@@ -470,37 +610,17 @@ export default function ConsumerDashboard() {
                                                 <span className="text-sm font-medium text-gray-700 ml-1">{product.qualityScore}</span>
                                             </div>
                                         </div>
-                                        <button className={`w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors ${currentLang === 'hi' ? 'font-hindi' : ''} ${!product.inStock ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                            {product.inStock
-                                                ? (currentLang === 'en' ? 'Buy Now' : 'अभी खरीदें')
-                                                : (currentLang === 'en' ? 'Notify When Available' : 'उपलब्ध होने पर सूचित करें')
-                                            }
-                                        </button>
+                                        <Link
+                                            href={`/trace/${product.batchId}`}
+                                            className={`w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors text-center block ${currentLang === 'hi' ? 'font-hindi' : ''}`}
+                                        >
+                                            {currentLang === 'en' ? 'View Trace Details' : 'ट्रेस विवरण देखें'}
+                                        </Link>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-xl shadow-sm border">
-                            <div className="p-6 border-b border-gray-200">
-                                <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Quick Actions' : 'त्वरित कार्य'}
-                                </h3>
-                            </div>
-                            <div className="p-6 space-y-3">
-                                {/* Marketplace removed for consumer role — consumers do not have access */}
-
-                                <button className={`w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <QrCodeIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Scan QR Code' : 'QR कोड स्कैन करें'}</span>
-                                </button>
-                                <button className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <AdjustmentsHorizontalIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Find Local Stores' : 'स्थानीय स्टोर खोजें'}</span>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
