@@ -14,4 +14,9 @@ export interface Product {
   status: 'active' | 'sold' | 'cancelled';
   createdAt: string;
   images?: string[]; // added so payload with images compiles
+  updatedAt?: string;
+  batchId?: string;
+  metadataHash?: string;
+  metadataPath?: string;
+  workflowActor?: 'producer' | 'intermediary';
 }

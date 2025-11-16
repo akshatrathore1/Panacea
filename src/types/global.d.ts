@@ -1,9 +1,14 @@
+type EthereumRequestArgs = {
+    method: string
+    params?: unknown[] | Record<string, unknown>
+}
+
 interface Window {
     ethereum?: {
         isMetaMask?: boolean
-        request: (args: { method: string; params?: any[] | Record<string, any> }) => Promise<any>
-        on?: (event: string, handler: (...args: any[]) => void) => void
-        removeListener?: (event: string, handler: (...args: any[]) => void) => void
+        request: (args: EthereumRequestArgs) => Promise<unknown>
+        on?: (event: string, handler: (...args: unknown[]) => void) => void
+        removeListener?: (event: string, handler: (...args: unknown[]) => void) => void
         selectedAddress?: string
         chainId?: string
     }
