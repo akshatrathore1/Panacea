@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useWeb3 } from '@/components/Providers'
@@ -11,22 +11,80 @@ import {
     CubeIcon,
     ChartBarIcon,
     BanknotesIcon,
-    GlobeAltIcon,
     SunIcon,
     BeakerIcon,
     UserGroupIcon,
     ArrowRightIcon,
     TagIcon,
-    ShoppingCartIcon
+    ShoppingCartIcon,
+    BellIcon,
+    QrCodeIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
+import type { LanguageCode } from '@/lib/language'
+
+const PRODUCER_NOTIFICATION_TEMPLATES = [
+    {
+        id: 'PROD-NOT-001',
+        messages: {
+            en: 'Intermediary confirmed pickup window for Wheat batch BATCH001',
+            hi: 'गेंहू बैच BATCH001 के लिए पिकअप समय स्लॉट मध्यस्थ ने पुष्टि किया'
+        },
+        timestamps: {
+            en: '1 hour ago',
+            hi: '1 घंटे पहले'
+        },
+        isNew: true
+    },
+    {
+        id: 'PROD-NOT-002',
+        messages: {
+            en: 'Soil health advisory available for upcoming mustard crop',
+            hi: 'आगामी सरसों फसल के लिए मृदा स्वास्थ्य परामर्श उपलब्ध'
+        },
+        timestamps: {
+            en: 'Yesterday',
+            hi: 'कल'
+        },
+        isNew: false
+    }
+]
 
 export default function ProducerDashboard() {
-    const { t, i18n } = useTranslation()
+    const { t } = useTranslation()
     const router = useRouter()
-    const { user, isConnected } = useWeb3()
-    const [currentLang, setCurrentLang] = useState('en')
+    const { user } = useWeb3()
+    const { language: currentLang } = useLanguage()
+    const currentLangRef = useRef<LanguageCode>(currentLang)
     const [loading, setLoading] = useState(true)
+    const notificationsUserToken = useMemo(() => {
+        const keySource = (user?.address || user?.phone || 'anon').toString().toLowerCase()
+        return keySource.replace(/[^a-z0-9:\-]/g, '-')
+    }, [user?.address, user?.phone])
+
+    const notificationsStorageKey = useMemo(
+        () => `notifications-read-producer-${notificationsUserToken}`,
+        [notificationsUserToken]
+    )
+    const notificationsSessionKey = useMemo(
+        () => `notifications-session-producer-${notificationsUserToken}`,
+        [notificationsUserToken]
+    )
+    const buildNotifications = (lang: LanguageCode) =>
+        PRODUCER_NOTIFICATION_TEMPLATES.map((template) => ({
+            id: template.id,
+            message: template.messages[lang] ?? template.messages.en,
+            timestamp: template.timestamps[lang] ?? template.timestamps.en,
+            isNew: template.isNew
+        }))
+
+    const [notifications, setNotifications] = useState(() => buildNotifications(currentLang))
+    const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+    const notificationsButtonRef = useRef<HTMLButtonElement | null>(null)
+    const notificationsPanelRef = useRef<HTMLDivElement | null>(null)
+    const [hasSeenNotifications, setHasSeenNotifications] = useState(false)
 
     useEffect(() => {
         // Allow phone-only users (not wallet-connected) to access producer dashboard.
@@ -40,11 +98,84 @@ export default function ProducerDashboard() {
         if (user) setLoading(false)
     }, [user])
 
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
-        i18n.changeLanguage(newLang)
+    const handleNotificationsClick = () => {
+        setShowNotificationPopup((prev) => !prev)
     }
+
+    useEffect(() => {
+        setNotifications((prev) =>
+            prev.map((notification) => {
+                const template = PRODUCER_NOTIFICATION_TEMPLATES.find((t) => t.id === notification.id)
+                if (!template) return notification
+                return {
+                    ...notification,
+                    message: template.messages[currentLang] ?? template.messages.en,
+                    timestamp: template.timestamps[currentLang] ?? template.timestamps.en
+                }
+            })
+        )
+    }, [currentLang])
+
+    useEffect(() => {
+        currentLangRef.current = currentLang
+    }, [currentLang])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const storedStatus = window.localStorage.getItem(notificationsStorageKey)
+        const sessionStatus = window.sessionStorage.getItem(notificationsSessionKey)
+
+        if (storedStatus === 'dismissed' || sessionStatus === 'dismissed') {
+            setHasSeenNotifications(true)
+            setNotifications((prev) => prev.map((notification) => ({ ...notification, isNew: false })))
+        } else {
+            setHasSeenNotifications(false)
+            if (!sessionStatus) {
+                window.sessionStorage.setItem(notificationsSessionKey, 'pending')
+            }
+        }
+    }, [notificationsStorageKey, notificationsSessionKey])
+
+    useEffect(() => {
+        setNotifications(buildNotifications(currentLangRef.current))
+    }, [notificationsStorageKey])
+
+    useEffect(() => {
+        if (!showNotificationPopup) return
+        setNotifications((prev) => prev.map((notification) => ({ ...notification, isNew: false })))
+        setHasSeenNotifications(true)
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(notificationsStorageKey, 'dismissed')
+            window.sessionStorage.setItem(notificationsSessionKey, 'dismissed')
+        }
+    }, [showNotificationPopup, notificationsStorageKey, notificationsSessionKey])
+
+    useEffect(() => {
+        if (!showNotificationPopup) return
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node
+            if (notificationsPanelRef.current?.contains(target)) return
+            if (notificationsButtonRef.current?.contains(target)) return
+            setShowNotificationPopup(false)
+        }
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowNotificationPopup(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('keydown', handleEscape)
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('keydown', handleEscape)
+        }
+    }, [showNotificationPopup])
+
+    const hasUnreadNotifications = !hasSeenNotifications && notifications.some((notification) => notification.isNew)
 
     // Mock data for demonstration
     const stats = {
@@ -75,6 +206,73 @@ export default function ProducerDashboard() {
         }
     ]
 
+    const forumHighlights = [
+        {
+            id: 'storage',
+            title: {
+                en: 'Best practices for wheat storage',
+                hi: 'गेहूं भंडारण की सर्वोत्तम प्रथाएं'
+            },
+            category: {
+                en: 'Post-harvest Care',
+                hi: 'फसलोत्तर देखभाल'
+            },
+            replies: 12,
+            activity: {
+                en: 'Active 3h ago',
+                hi: '3 घंटे पहले सक्रिय'
+            }
+        },
+        {
+            id: 'organic',
+            title: {
+                en: 'Organic certification made simple',
+                hi: 'जैविक प्रमाणन आसान बनाया'
+            },
+            category: {
+                en: 'Compliance',
+                hi: 'अनुपालन'
+            },
+            replies: 8,
+            activity: {
+                en: 'Answered yesterday',
+                hi: 'उत्तर कल मिला'
+            }
+        },
+        {
+            id: 'buyers',
+            title: {
+                en: 'Finding reliable buyers this season',
+                hi: 'इस सीजन विश्वसनीय खरीदार खोजें'
+            },
+            category: {
+                en: 'Marketplace Tips',
+                hi: 'बाज़ार सुझाव'
+            },
+            replies: 15,
+            activity: {
+                en: 'New replies today',
+                hi: 'आज नए उत्तर'
+            }
+        },
+        {
+            id: 'inputs',
+            title: {
+                en: 'Recommended inputs for higher yield',
+                hi: 'बेहतर उपज के लिए सुझाए इनपुट'
+            },
+            category: {
+                en: 'Crop Advisory',
+                hi: 'फसल सलाह'
+            },
+            replies: 6,
+            activity: {
+                en: 'Thread started 2d ago',
+                hi: 'टॉपिक 2 दिन पहले शुरू हुआ'
+            }
+        }
+    ]
+
     const quickActions = [
         {
             title: currentLang === 'en' ? 'Create New Batch' : 'नया बैच बनाएं',
@@ -84,10 +282,17 @@ export default function ProducerDashboard() {
             color: 'bg-green-500'
         },
         {
-            title: currentLang === 'en' ? 'My Inventory' : 'मेरी सूची',
-            description: currentLang === 'en' ? 'View all batches' : 'सभी बैच देखें',
+            title: currentLang === 'en' ? 'Batch Inventory' : 'बैच सूची',
+            description: currentLang === 'en' ? 'View & transfer batches' : 'बैच देखें और स्थानांतरण करें',
+            icon: QrCodeIcon,
+            href: '/dashboard/producer/batches',
+            color: 'bg-teal-500'
+        },
+        {
+            title: currentLang === 'en' ? 'My Listings' : 'मेरी सूचियाँ',
+            description: currentLang === 'en' ? 'View all listings' : 'सभी सूचियाँ देखें',
             icon: CubeIcon,
-            href: '/dashboard/producer/inventory',
+            href: '/dashboard/producer/listings',
             color: 'bg-blue-500'
         },
         {
@@ -97,7 +302,6 @@ export default function ProducerDashboard() {
             href: '/dashboard/producer/list',
             color: 'bg-orange-500'
         },
-        // Marketplace moved to sidebar to improve layout and focus of quick actions
         {
             title: currentLang === 'en' ? 'Analytics' : 'विश्लेषण',
             description: currentLang === 'en' ? 'View sales data' : 'बिक्री डेटा देखें',
@@ -210,16 +414,56 @@ export default function ProducerDashboard() {
                             </div>
                         </div>
 
-                        <div className="flex gap-6 items-center">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <button
+                                    ref={notificationsButtonRef}
+                                    type="button"
+                                    onClick={handleNotificationsClick}
+                                    className="relative rounded-full p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                    aria-haspopup="true"
+                                    aria-expanded={showNotificationPopup}
+                                    aria-label={currentLang === 'en' ? 'View notifications' : 'अधिसूचनाएं देखें'}
+                                >
+                                    <BellIcon className="w-6 h-6" />
+                                    {hasUnreadNotifications && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500"></span>
+                                    )}
+                                </button>
+                                {showNotificationPopup && (
+                                    <div
+                                        ref={notificationsPanelRef}
+                                        className="absolute right-0 mt-3 w-80 rounded-xl border border-gray-200 bg-white shadow-lg z-50"
+                                    >
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <h3 className={`text-sm font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en' ? 'Notifications' : 'अधिसूचनाएं'}
+                                            </h3>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto py-2">
+                                            {notifications.length === 0 ? (
+                                                <p className={`px-4 py-3 text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    {currentLang === 'en' ? 'No notifications yet' : 'अभी कोई अधिसूचना नहीं'}
+                                                </p>
+                                            ) : (
+                                                notifications.map((notification) => (
+                                                    <div
+                                                        key={notification.id}
+                                                        className={`px-4 py-3 text-sm ${notification.isNew ? 'bg-green-50' : 'bg-white'} border-t border-gray-100 first:border-t-0`}
+                                                    >
+                                                        <p className={`text-gray-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                            {notification.message}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-gray-500">{notification.timestamp}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 text-gray-600 hover:text-gray-900"
-                            >
-                                <GlobeAltIcon className="w-5 h-5" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
-                            {/* Marketplace moved to Quick Actions as a card */}
+                            <LanguageToggle />
                         </div>
                     </div>
                 </div>
@@ -230,8 +474,12 @@ export default function ProducerDashboard() {
                 <div className="mb-8">
                     <h1 className={`text-3xl font-bold text-gray-900 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                         {currentLang === 'en'
-                            ? `Welcome back, ${user.name}!`
-                            : `स्वागत है, ${user.name}!`}
+                            ? user?.name
+                                ? `Welcome back, ${user.name}!`
+                                : 'Welcome back!'
+                            : user?.name
+                                ? `स्वागत है, ${user.name}!`
+                                : 'फिर से स्वागत है!'}
                     </h1>
                     <p className={`text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                         {currentLang === 'en'
@@ -244,7 +492,9 @@ export default function ProducerDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white p-6 rounded-lg shadow-sm border">
                         <div className="flex items-center">
-                            <CubeIcon className="w-8 h-8 text-blue-600" />
+                            <div className="p-3 rounded-lg bg-blue-100">
+                                <CubeIcon className="w-6 h-6 text-blue-600" />
+                            </div>
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">
                                     {currentLang === 'en' ? 'Total Batches' : 'कुल बैच'}
@@ -256,7 +506,9 @@ export default function ProducerDashboard() {
 
                     <div className="bg-white p-6 rounded-lg shadow-sm border">
                         <div className="flex items-center">
-                            <TagIcon className="w-8 h-8 text-green-600" />
+                            <div className="p-3 rounded-lg bg-green-100">
+                                <TagIcon className="w-6 h-6 text-green-600" />
+                            </div>
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">
                                     {currentLang === 'en' ? 'Active Batches' : 'सक्रिय बैच'}
@@ -268,7 +520,9 @@ export default function ProducerDashboard() {
 
                     <div className="bg-white p-6 rounded-lg shadow-sm border">
                         <div className="flex items-center">
-                            <BeakerIcon className="w-8 h-8 text-purple-600" />
+                            <div className="p-3 rounded-lg bg-purple-100">
+                                <BeakerIcon className="w-6 h-6 text-purple-600" />
+                            </div>
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">
                                     {currentLang === 'en' ? 'Sold Batches' : 'बेचे गए बैच'}
@@ -280,7 +534,9 @@ export default function ProducerDashboard() {
 
                     <div className="bg-white p-6 rounded-lg shadow-sm border">
                         <div className="flex items-center">
-                            <BanknotesIcon className="w-8 h-8 text-orange-600" />
+                            <div className="p-3 rounded-lg bg-orange-100">
+                                <BanknotesIcon className="w-6 h-6 text-orange-600" />
+                            </div>
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600">
                                     {currentLang === 'en' ? 'Total Earnings' : 'कुल आय'}
@@ -323,6 +579,59 @@ export default function ProducerDashboard() {
                                     </Link>
                                 )
                             })}
+                        </div>
+
+                        {/* Discussion Forum */}
+                        <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-xl border border-blue-100 shadow-sm mb-8">
+                            <div className="p-6">
+                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-3 rounded-full bg-blue-600">
+                                            <UserGroupIcon className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en' ? 'Discussion Forum' : 'चर्चा मंच'}
+                                            </h2>
+                                            <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en'
+                                                    ? 'Learn from fellow producers, share advice, and discover trusted buyers.'
+                                                    : 'अन्य उत्पादकों से सीखें, सुझाव साझा करें और विश्वसनीय खरीदारों से जुड़ें।'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        href="/dashboard/community"
+                                        className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                                    >
+                                        {currentLang === 'en' ? 'Join the conversation' : 'चर्चा में शामिल हों'}
+                                    </Link>
+                                </div>
+
+                                <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {forumHighlights.map((topic) => (
+                                        <div
+                                            key={topic.id}
+                                            className="rounded-lg border border-blue-100 bg-white/70 p-4 shadow-sm hover:border-blue-200 transition-colors"
+                                        >
+                                            <p className={`text-xs font-semibold uppercase tracking-wide text-blue-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en' ? topic.category.en : topic.category.hi}
+                                            </p>
+                                            <h3 className={`mt-2 text-sm font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en' ? topic.title.en : topic.title.hi}
+                                            </h3>
+                                            <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                                                <span>
+                                                    {currentLang === 'en'
+                                                        ? `${topic.replies} replies`
+                                                        : `${topic.replies} उत्तर`}
+                                                </span>
+                                                <span>{currentLang === 'en' ? topic.activity.en : topic.activity.hi}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Recent Batches */}
@@ -387,8 +696,49 @@ export default function ProducerDashboard() {
 
                     {/* Sidebar */}
                     <div className="space-y-6">
+                        {/* Marketplace Spotlight */}
+                        <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-orange-100 p-6 shadow-sm">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="rounded-full bg-orange-500 p-3">
+                                        <ShoppingCartIcon className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {currentLang === 'en' ? 'Marketplace' : 'बाज़ार'}
+                                        </h3>
+                                        <p className={`text-sm text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {currentLang === 'en'
+                                                ? 'Browse verified demand, list your produce, and track negotiations in one place.'
+                                                : 'सत्यापित मांग देखें, अपना उत्पाद सूचीबद्ध करें और सभी बातचीत एक ही स्थान पर ट्रैक करें।'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">
+                                            {currentLang === 'en' ? 'Fresh listings' : 'नई सूचियाँ'}
+                                        </p>
+                                        <p className="mt-1 text-2xl font-semibold text-gray-900">18</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">
+                                            {currentLang === 'en' ? 'Active buyers' : 'सक्रिय खरीदार'}
+                                        </p>
+                                        <p className="mt-1 text-2xl font-semibold text-gray-900">9</p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href="/marketplace"
+                                    className="inline-flex w-full items-center justify-center rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-orange-600"
+                                >
+                                    {currentLang === 'en' ? 'Open Marketplace' : 'बाज़ार खोलें'}
+                                </Link>
+                            </div>
+                        </div>
+
                         {/* Weather Widget */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                             <div className="flex items-center mb-4">
                                 <SunIcon className="w-6 h-6 text-yellow-500 mr-2" />
                                 <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -396,39 +746,30 @@ export default function ProducerDashboard() {
                                 </h3>
                             </div>
                             <div className="space-y-3">
-                                {/* City Name */}
                                 <div className="flex justify-between">
                                     <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'City' : 'शहर'}
                                     </span>
                                     <span className="text-sm font-medium">{weatherData.city}</span>
                                 </div>
-
-                                {/* Temperature */}
                                 <div className="flex justify-between">
                                     <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Temperature' : 'तापमान'}
                                     </span>
                                     <span className="text-sm font-medium">{weatherData.temperature}</span>
                                 </div>
-
-                                {/* Humidity */}
                                 <div className="flex justify-between">
                                     <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Humidity' : 'आर्द्रता'}
                                     </span>
                                     <span className="text-sm font-medium">{weatherData.humidity}</span>
                                 </div>
-
-                                {/* Rainfall */}
                                 <div className="flex justify-between">
                                     <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Rainfall' : 'वर्षा'}
                                     </span>
                                     <span className="text-sm font-medium">{weatherData.rainfall}</span>
                                 </div>
-
-                                {/* Condition */}
                                 <div className="flex justify-between">
                                     <span className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Condition' : 'स्थिति'}
@@ -436,29 +777,10 @@ export default function ProducerDashboard() {
                                     <span className="text-sm font-medium">{weatherData.condition}</span>
                                 </div>
                             </div>
-
-                        </div>
-
-                        {/* Marketplace Quick Card (moved from quick actions) */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border mb-4">
-                            <div className="flex items-center mb-4">
-                                <div className="p-2 rounded-lg bg-purple-50 mr-2">
-                                    <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
-                                </div>
-                                <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}
-                                </h3>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-4">
-                                {currentLang === 'en' ? 'Browse & list products' : 'उत्पाद ब्राउज़ और सूची करें'}
-                            </p>
-                            <Link href="/marketplace" className="inline-flex items-center justify-center w-full rounded-lg bg-orange-500 px-4 py-2 text-white hover:bg-orange-600">
-                                {currentLang === 'en' ? 'Open Marketplace' : 'मार्केटप्लेस खोलें'}
-                            </Link>
                         </div>
 
                         {/* Government Information */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border">
                             <div className="flex items-center mb-4">
                                 <BanknotesIcon className="w-6 h-6 text-green-600 mr-2" />
                                 <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
@@ -480,40 +802,6 @@ export default function ProducerDashboard() {
                                         </div>
                                     </div>
                                 ))}
-                            </div>
-                        </div>
-
-                        {/* Community Forum */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border">
-                            <div className="flex items-center mb-4">
-                                <UserGroupIcon className="w-6 h-6 text-blue-600 mr-2" />
-                                <h3 className={`font-semibold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Community Forum' : 'समुदायिक मंच'}
-                                </h3>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="p-3 bg-blue-50 rounded">
-                                    <p className={`text-sm text-blue-900 font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {currentLang === 'en'
-                                            ? 'Best practices for wheat storage'
-                                            : 'गेहूं भंडारण की सर्वोत्तम प्रथाएं'}
-                                    </p>
-                                    <p className="text-xs text-blue-600 mt-1">12 replies</p>
-                                </div>
-                                <div className="p-3 bg-blue-50 rounded">
-                                    <p className={`text-sm text-blue-900 font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {currentLang === 'en'
-                                            ? 'Organic certification process'
-                                            : 'जैविक प्रमाणन प्रक्रिया'}
-                                    </p>
-                                    <p className="text-xs text-blue-600 mt-1">8 replies</p>
-                                </div>
-                                <Link
-                                    href="/dashboard/community"
-                                    className={`text-sm text-blue-600 hover:text-blue-800 font-medium ${currentLang === 'hi' ? 'font-hindi' : ''}`}
-                                >
-                                    {currentLang === 'en' ? 'View all discussions →' : 'सभी चर्चाएं देखें →'}
-                                </Link>
                             </div>
                         </div>
                     </div>

@@ -1,282 +1,284 @@
-'use client'
+"use client"
 
-import React, { useEffect, useMemo, useState } from 'react'
-import type { ElementType, SVGProps } from 'react'
-import Link from 'next/link'
+import { useMemo } from "react"
+import type { ElementType, SVGProps } from "react"
+import Link from "next/link"
 import {
   ArrowLeftIcon,
-  GlobeAltIcon,
   ChartBarIcon,
   CurrencyRupeeIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  ArrowPathIcon,
   Squares2X2Icon,
-  InboxStackIcon,
-  UsersIcon
-} from '@heroicons/react/24/outline'
-import { useTranslation } from 'react-i18next'
-import type { Product } from '@/types/product'
+  BuildingStorefrontIcon,
+  ClipboardDocumentCheckIcon,
+  CalendarDaysIcon
+} from "@heroicons/react/24/outline"
+import LanguageToggle from "@/components/LanguageToggle"
+import { useLanguage } from "@/hooks/useLanguage"
 
-const INR = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
+const INR = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
   maximumFractionDigits: 0
 })
 
-type Aggregates = {
-  totalListedQty: number
-  totalSoldQty: number
-  totalListedRevenue: number
-  totalSalesRevenue: number
-  byCategory: Record<string, { listedQty: number; soldQty: number; salesRevenue: number }>
-  byDay: Array<{ date: string; listedQty: number; soldQty: number }>
-  bestCategory?: string
-}
-
 type StatTrend = {
-  direction: 'up' | 'down'
+  direction: "up" | "down"
   value: string
 }
 
 type IconComponent = ElementType<SVGProps<SVGSVGElement>>
 
-const formatDateLabel = (isoDate: string, lang: 'en' | 'hi') => {
-  const date = new Date(isoDate)
-  return date.toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', {
-    month: 'short',
-    day: 'numeric'
-  })
-}
+type CommitmentStatus = "fulfilled" | "inProgress" | "planning"
 
 export default function ProducerAnalyticsPage() {
-  const { i18n } = useTranslation()
-  const initialLang = (i18n.language as 'en' | 'hi') || 'en'
-  const [currentLang, setCurrentLang] = useState<'en' | 'hi'>(initialLang)
-  const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const { language: currentLang } = useLanguage()
 
-  const toggleLanguage = () => {
-    const nextLang = currentLang === 'en' ? 'hi' : 'en'
-    setCurrentLang(nextLang)
-    i18n.changeLanguage(nextLang)
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('language', nextLang)
-        document.documentElement.lang = nextLang
-      }
-    } catch { }
-  }
+  const summaryMeta = useMemo(
+    () => ({
+      period: currentLang === "en" ? "Rabi 2024-25 crop cycle" : "रबी 2024-25 फसल चक्र",
+      updated: currentLang === "en" ? "Updated 12 Nov, 6:20 PM" : "12 नवम्बर, शाम 6:20 पर अपडेट"
+    }),
+    [currentLang]
+  )
 
-  const fetchProducts = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch('/api/marketplace/products', { method: 'GET' })
-      if (!response.ok) {
-        throw new Error(`Failed to fetch products (${response.status})`)
-      }
-      const payload = (await response.json()) as Product[]
-      setProducts(payload)
-      setLastUpdated(new Date())
-      setError(null)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load products'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchProducts()
-  }, [])
-
-  const aggregates = useMemo<Aggregates>(() => {
-    const byCategory: Aggregates['byCategory'] = {}
-    const dayMap: Record<string, { listedQty: number; soldQty: number }> = {}
-
-    let totalListedQty = 0
-    let totalSoldQty = 0
-    let totalListedRevenue = 0
-    let totalSalesRevenue = 0
-
-    for (const product of products) {
-      const quantity = Number(product.quantity ?? 0)
-      const price = Number(product.price ?? 0)
-      const category = (product.category || 'Uncategorized').trim() || 'Uncategorized'
-      const isSold = product.status === 'sold'
-      const listedAt = product.createdAt ? new Date(product.createdAt) : null
-      const soldAtSource = (product as unknown as { soldAt?: string | number | Date }).soldAt
-      const soldAt = soldAtSource ? new Date(soldAtSource) : null
-
-      totalListedQty += quantity
-      totalListedRevenue += price * quantity
-
-      if (!byCategory[category]) {
-        byCategory[category] = { listedQty: 0, soldQty: 0, salesRevenue: 0 }
-      }
-
-      byCategory[category].listedQty += quantity
-
-      if (isSold) {
-        totalSoldQty += quantity
-        totalSalesRevenue += price * quantity
-        byCategory[category].soldQty += quantity
-        byCategory[category].salesRevenue += price * quantity
-      }
-
-      const listedKey = listedAt ? listedAt.toISOString().slice(0, 10) : null
-      if (listedKey) {
-        dayMap[listedKey] ??= { listedQty: 0, soldQty: 0 }
-        dayMap[listedKey].listedQty += quantity
-      }
-
-      const soldKey = soldAt ? soldAt.toISOString().slice(0, 10) : null
-      if (soldKey && isSold) {
-        dayMap[soldKey] ??= { listedQty: 0, soldQty: 0 }
-        dayMap[soldKey].soldQty += quantity
-      }
-    }
-
-    const byDay = Object.entries(dayMap)
-      .map(([date, value]) => ({ date, ...value }))
-      .sort((a, b) => a.date.localeCompare(b.date))
-
-    const bestCategory = Object.entries(byCategory)
-      .sort((a, b) => b[1].salesRevenue - a[1].salesRevenue)[0]?.[0]
-
-    return {
-      totalListedQty,
-      totalSoldQty,
-      totalListedRevenue,
-      totalSalesRevenue,
-      byCategory,
-      byDay,
-      bestCategory
-    }
-  }, [products])
-
-  const activeListings = useMemo(() => products.filter((product) => product.status !== 'sold'), [products])
-  const soldListings = useMemo(() => products.filter((product) => product.status === 'sold'), [products])
-
-  const averageListingPrice = aggregates.totalListedQty
-    ? aggregates.totalListedRevenue / aggregates.totalListedQty
-    : 0
-  const averageSalePrice = aggregates.totalSoldQty
-    ? aggregates.totalSalesRevenue / aggregates.totalSoldQty
-    : 0
-  const pendingQuantity = Math.max(aggregates.totalListedQty - aggregates.totalSoldQty, 0)
-  const fulfilmentRate = aggregates.totalListedQty
-    ? (aggregates.totalSoldQty / aggregates.totalListedQty) * 100
-    : 0
-
-  const categoriesForDisplay = useMemo(() => {
-    return Object.entries(aggregates.byCategory)
-      .map(([name, metrics]) => ({ name, ...metrics }))
-      .sort((a, b) => b.listedQty - a.listedQty)
-  }, [aggregates.byCategory])
-
-  const recentDays = useMemo(() => {
-    const days = aggregates.byDay.slice(-7)
-    return days
-  }, [aggregates.byDay])
-
-  const maxDailyVolume = recentDays.length
-    ? Math.max(1, ...recentDays.map((day) => Math.max(day.listedQty, day.soldQty)))
-    : 1
-
-  const priceDelta = averageSalePrice - averageListingPrice
-  const priceTrend: StatTrend | undefined = aggregates.totalSoldQty
-    ? {
-      direction: priceDelta >= 0 ? 'up' : 'down',
-      value: `${priceDelta >= 0 ? '+' : '-'}${INR.format(Math.abs(priceDelta))} ${currentLang === 'en' ? 'vs listed avg' : 'सूची औसत की तुलना'
-        }`
-    }
-    : undefined
-
-  const insights = useMemo(() => {
-    const bestCategoryName = aggregates.bestCategory
-    const bestCategoryStats = bestCategoryName ? aggregates.byCategory[bestCategoryName] : undefined
-
-    return [
+  const stats = useMemo(
+    () => [
       {
-        title: currentLang === 'en' ? 'Best selling category' : 'सबसे ज़्यादा बिकने वाली श्रेणी',
-        description: bestCategoryName && bestCategoryStats
-          ? currentLang === 'en'
-            ? `${bestCategoryName} generated ${INR.format(bestCategoryStats.salesRevenue)} in sales with ${bestCategoryStats.soldQty.toLocaleString()} units sold.`
-            : `${bestCategoryName} ने ${bestCategoryStats.soldQty.toLocaleString()} यूनिट बिक्री के साथ ${INR.format(bestCategoryStats.salesRevenue)} का राजस्व अर्जित किया।`
-          : currentLang === 'en'
-            ? 'Close a few sales to reveal your top-performing categories.'
-            : 'कुछ बिक्री पूरी करें ताकि शीर्ष प्रदर्शन करने वाली श्रेणियाँ दिखाई दें।'
+        label: currentLang === "en" ? "Sell-through rate" : "बिक्री पूर्णता दर",
+        value: "86%",
+        helper: currentLang === "en" ? "Across confirmed buyer orders" : "पुष्ट खरीदार ऑर्डर में",
+        icon: ChartBarIcon,
+        iconBg: "bg-emerald-100",
+        iconColor: "text-emerald-600",
+        trend: {
+          direction: "up",
+          value: currentLang === "en" ? "+6 pts vs last season" : "पिछले सीज़न से +6 अंक"
+        } as StatTrend
       },
       {
-        title: currentLang === 'en' ? 'Pending inventory' : 'लंबित इन्वेंटरी',
-        description: pendingQuantity > 0
-          ? currentLang === 'en'
-            ? `${pendingQuantity.toLocaleString()} units remain unsold. Highlight freshness or offer bundled pricing to move inventory faster.`
-            : `${pendingQuantity.toLocaleString()} यूनिट अभी बिकनी बाकी हैं। ताज़गी को हाइलाइट करें या समूहीकृत कीमतों से बिक्री तेज़ करें।`
-          : currentLang === 'en'
-            ? 'Fantastic! Every listed batch has been sold—keep sourcing to meet demand.'
-            : 'उत्कृष्ट! सूचीबद्ध सभी बैच बिक चुके हैं—मांग पूरी करने के लिए आपूर्ति जारी रखें।'
+        label: currentLang === "en" ? "Average sale price" : "औसत बिक्री मूल्य",
+        value: INR.format(2650),
+        helper: currentLang === "en" ? "Premium wheat & chickpea lots" : "प्रीमियम गेहूं व चना लॉट",
+        icon: CurrencyRupeeIcon,
+        iconBg: "bg-yellow-100",
+        iconColor: "text-yellow-600"
       },
       {
-        title: currentLang === 'en' ? 'Average sale price' : 'औसत बिक्री मूल्य',
-        description: aggregates.totalSoldQty > 0
-          ? currentLang === 'en'
-            ? `Sold batches average ${INR.format(averageSalePrice)} per unit compared to ${INR.format(averageListingPrice)} listed.`
-            : `बिके हुए बैच का औसत मूल्य प्रति यूनिट ${INR.format(averageSalePrice)} है, जबकि सूचीबद्ध औसत ${INR.format(averageListingPrice)} था।`
-          : currentLang === 'en'
-            ? 'Track sale price vs listing price once orders are confirmed to spot negotiation patterns.'
-            : 'आदेशों की पुष्टि होते ही बिक्री मूल्य और सूची मूल्य की तुलना करें ताकि बातचीत के रुझान दिखाई दें।'
+        label: currentLang === "en" ? "Active institutional buyers" : "सक्रिय संस्थागत खरीदार",
+        value: "7",
+        helper: currentLang === "en" ? "Long-term supply relationships" : "दीर्घकालिक आपूर्ति संबंध",
+        icon: BuildingStorefrontIcon,
+        iconBg: "bg-blue-100",
+        iconColor: "text-blue-600"
+      },
+      {
+        label: currentLang === "en" ? "Cultivated acreage" : "कुल खेती क्षेत्र",
+        value: currentLang === "en" ? "42 acres" : "42 एकड़",
+        helper: currentLang === "en" ? "Across Kharif & Rabi seasons" : "खरीफ व रबी दोनों सीज़न में",
+        icon: Squares2X2Icon,
+        iconBg: "bg-purple-100",
+        iconColor: "text-purple-600"
       }
-    ]
-  }, [aggregates.bestCategory, aggregates.byCategory, aggregates.totalSoldQty, averageSalePrice, averageListingPrice, pendingQuantity, currentLang])
+    ],
+    [currentLang]
+  )
 
-  const statCards = [
-    {
-      label: currentLang === 'en' ? 'Active listings' : 'सक्रिय सूचियाँ',
-      value: activeListings.length.toLocaleString(),
-      helper: currentLang === 'en'
-        ? `${soldListings.length.toLocaleString()} batches sold`
-        : `${soldListings.length.toLocaleString()} बैच बिक चुके हैं`,
-      icon: Squares2X2Icon,
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600'
+  const seasonPerformance = useMemo(
+    () => [
+      {
+        season: currentLang === "en" ? "Kharif 2024" : "खरीफ 2024",
+        cropMix: currentLang === "en" ? "Soybean • Tur dal" : "सोयाबीन • तूर दाल",
+        acreage: currentLang === "en" ? "18 acres" : "18 एकड़",
+        yield: currentLang === "en" ? "62 tonnes" : "62 टन",
+        sellThrough: "81%",
+        highlight:
+          currentLang === "en"
+            ? "Primary buyers: AgroBazaar, CityFresh"
+            : "मुख्य खरीदार: एग्रोबाज़ार, सिटीफ्रेश"
+      },
+      {
+        season: currentLang === "en" ? "Rabi 2024-25" : "रबी 2024-25",
+        cropMix: currentLang === "en" ? "Wheat (Sharbati) • Chickpea" : "गेहूं (शरबती) • चना",
+        acreage: currentLang === "en" ? "24 acres" : "24 एकड़",
+        yield: currentLang === "en" ? "86 tonnes" : "86 टन",
+        sellThrough: "92%",
+        highlight:
+          currentLang === "en"
+            ? "Repeat demand from city retailers"
+            : "शहर के रिटेलरों से लगातार मांग"
+      },
+      {
+        season: currentLang === "en" ? "Summer 2025" : "ग्रीष्म 2025",
+        cropMix: currentLang === "en" ? "Okra • Cucumber (net-house)" : "भिंडी • खीरा (नेट-हाउस)",
+        acreage: currentLang === "en" ? "6 acres" : "6 एकड़",
+        yield: currentLang === "en" ? "18 tonnes" : "18 टन",
+        sellThrough: "79%",
+        highlight:
+          currentLang === "en"
+            ? "Traceability enabled premium pricing"
+            : "ट्रेसेबिलिटी से प्रीमियम मूल्य प्राप्त"
+      }
+    ],
+    [currentLang]
+  )
+
+  const commitmentStatusMeta: Record<CommitmentStatus, { badge: string; label: string }> = {
+    fulfilled: {
+      badge: "bg-emerald-100 text-emerald-700",
+      label: currentLang === "en" ? "Dispatched" : "प्रेषित"
     },
-    {
-      label: currentLang === 'en' ? 'Listed volume' : 'सूचीबद्ध मात्रा',
-      value: aggregates.totalListedQty.toLocaleString(),
-      helper: currentLang === 'en'
-        ? `Sold volume ${aggregates.totalSoldQty.toLocaleString()}`
-        : `बिक्री मात्रा ${aggregates.totalSoldQty.toLocaleString()}`,
-      icon: InboxStackIcon,
-      iconBg: 'bg-green-100',
-      iconColor: 'text-green-600'
+    inProgress: {
+      badge: "bg-amber-100 text-amber-700",
+      label: currentLang === "en" ? "In transit" : "रास्ते में"
     },
-    {
-      label: currentLang === 'en' ? 'Gross sales revenue' : 'सकल बिक्री राजस्व',
-      value: INR.format(aggregates.totalSalesRevenue),
-      helper: currentLang === 'en'
-        ? `Average sale ${INR.format(averageSalePrice || 0)} / unit`
-        : `औसत बिक्री ${INR.format(averageSalePrice || 0)} / यूनिट`,
-      icon: CurrencyRupeeIcon,
-      iconBg: 'bg-yellow-100',
-      iconColor: 'text-yellow-600',
-      trend: priceTrend
-    },
-    {
-      label: currentLang === 'en' ? 'Fulfilment rate' : 'पूर्ति दर',
-      value: `${fulfilmentRate.toFixed(1)}%`,
-      helper: currentLang === 'en'
-        ? `${pendingQuantity.toLocaleString()} units pending`
-        : `${pendingQuantity.toLocaleString()} यूनिट लंबित`,
-      icon: UsersIcon,
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600'
+    planning: {
+      badge: "bg-blue-100 text-blue-700",
+      label: currentLang === "en" ? "Scheduled" : "निर्धारित"
     }
-  ]
+  }
+
+  const buyerCommitments = useMemo(
+    () => [
+      {
+        buyer: "Annapurna Mart (Delhi)",
+        volume: currentLang === "en" ? "18 tonnes wheat (Grade A)" : "18 टन गेहूं (ग्रेड A)",
+        price: INR.format(2520),
+        status: "fulfilled" as CommitmentStatus,
+        nextAction:
+          currentLang === "en"
+            ? "Collect weighment receipts by 16 Nov"
+            : "16 नवम्बर तक वजन पर्चियां प्राप्त करें"
+      },
+      {
+        buyer: "FreshBasket Wholesale (Mumbai)",
+        volume: currentLang === "en" ? "12 tonnes chickpea (Kabuli)" : "12 टन चना (काबुली)",
+        price: INR.format(2860),
+        status: "inProgress" as CommitmentStatus,
+        nextAction:
+          currentLang === "en"
+            ? "Upload final moisture report by 14 Nov"
+            : "14 नवम्बर तक अंतिम नमी रिपोर्ट अपलोड करें"
+      },
+      {
+        buyer: "CityFresh Stores (Bengaluru)",
+        volume: currentLang === "en" ? "6 tonnes net-house vegetables" : "6 टन नेट-हाउस सब्ज़ियाँ",
+        price: INR.format(1980),
+        status: "planning" as CommitmentStatus,
+        nextAction:
+          currentLang === "en"
+            ? "Confirm staggered dispatch slots"
+            : "स्तरीय डिस्पैच स्लॉट की पुष्टि करें"
+      }
+    ],
+    [currentLang]
+  )
+
+  const inputUsage = useMemo(
+    () => [
+      {
+        label: currentLang === "en" ? "Organic compost applied" : "लगाया गया जैविक कंपोस्ट",
+        value: 82,
+        target: 90,
+        helper:
+          currentLang === "en"
+            ? "82 of 90 planned tonnes applied"
+            : "90 नियोजित टन में से 82 लगाया गया",
+        colorClass: "bg-emerald-500"
+      },
+      {
+        label: currentLang === "en" ? "Drip irrigation hours" : "ड्रिप सिंचाई घंटे",
+        value: 118,
+        target: 140,
+        helper:
+          currentLang === "en"
+            ? "Need 22 additional hours this fortnight"
+            : "इस पखवाड़े में 22 अतिरिक्त घंटे आवश्यक",
+        colorClass: "bg-sky-500"
+      },
+      {
+        label: currentLang === "en" ? "Bio-pesticide coverage" : "जैव-कीटनाशक कवरेज",
+        value: 64,
+        target: 80,
+        helper:
+          currentLang === "en"
+            ? "Next spray cycle scheduled for Field-3"
+            : "अगला छिड़काव फ़ील्ड-3 के लिए निर्धारित",
+        colorClass: "bg-amber-500"
+      }
+    ],
+    [currentLang]
+  )
+
+  const upcomingTasks = useMemo(
+    () => [
+      {
+        date: currentLang === "en" ? "15 Nov" : "15 नव.",
+        activity:
+          currentLang === "en"
+            ? "Soil micronutrient test report review"
+            : "मृदा सूक्ष्म पोषक रिपोर्ट समीक्षा",
+        location: currentLang === "en" ? "Field 2" : "फ़ील्ड 2",
+        owner: currentLang === "en" ? "Agronomist Nisha" : "एग्रोनोमिस्ट निशा"
+      },
+      {
+        date: currentLang === "en" ? "18 Nov" : "18 नव.",
+        activity:
+          currentLang === "en"
+            ? "Drip line flushing & filter service"
+            : "ड्रिप लाइन फ्लशिंग व फ़िल्टर सेवा",
+        location: currentLang === "en" ? "Entire farm" : "पूरे खेत",
+        owner: currentLang === "en" ? "Irrigation team" : "सिंचाई टीम"
+      },
+      {
+        date: currentLang === "en" ? "21 Nov" : "21 नव.",
+        activity:
+          currentLang === "en"
+            ? "Buyer quality audit (CityFresh Stores)"
+            : "खरीदार गुणवत्ता ऑडिट (सिटीफ्रेश स्टोर्स)",
+        location: currentLang === "en" ? "Packhouse" : "पैकहाउस",
+        owner: currentLang === "en" ? "Operations lead Rohit" : "ऑपरेशन्स प्रमुख रोहित"
+      }
+    ],
+    [currentLang]
+  )
+
+  const insights = useMemo(
+    () => [
+      {
+        title:
+          currentLang === "en"
+            ? "Moisture control improved milling grade"
+            : "नमी नियंत्रण ने मिलिंग ग्रेड सुधारा",
+        description:
+          currentLang === "en"
+            ? "Solar drying deck reduced average grain moisture to 11.2%, unlocking higher prices with city mills."
+            : "सौर सुखाने डेक ने औसत अनाज नमी 11.2% तक घटाई, जिससे शहर की मिलों से बेहतर मूल्य मिला।"
+      },
+      {
+        title:
+          currentLang === "en"
+            ? "Diversify buyer mix"
+            : "खरीदार मिश्रण विविध बनाएं",
+        description:
+          currentLang === "en"
+            ? "Two retail chains contribute 64% revenue. Explore institutional tie-ups to derisk demand."
+            : "दो रिटेल चैन 64% राजस्व देते हैं। मांग का जोखिम घटाने हेतु संस्थागत साझेदारी खोजें।"
+      },
+      {
+        title:
+          currentLang === "en"
+            ? "Strengthen input scheduling"
+            : "इनपुट शेड्यूल मजबूत करें",
+        description:
+          currentLang === "en"
+            ? "Bio-pesticide coverage lags plan by 16%. Align labour rosters before the next spray window."
+            : "जैव-कीटनाशक कवरेज योजना से 16% पीछे है। अगले छिड़काव से पहले श्रम रोस्टर समायोजित करें।"
+      }
+    ],
+    [currentLang]
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -288,16 +290,11 @@ export default function ProducerAnalyticsPage() {
               className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeftIcon className="w-5 h-5" />
-              <span>{currentLang === 'en' ? 'Back to Dashboard' : 'डैशबोर्ड पर वापस'}</span>
+              <span className={currentLang === "hi" ? "font-hindi" : ""}>
+                {currentLang === "en" ? "Back to dashboard" : "डैशबोर्ड पर वापस"}
+              </span>
             </Link>
-            <button
-              onClick={toggleLanguage}
-              data-local-language-toggle
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <GlobeAltIcon className="w-4 h-4" />
-              {currentLang === 'en' ? 'हिंदी' : 'English'}
-            </button>
+            <LanguageToggle />
           </div>
         </div>
       </header>
@@ -310,173 +307,180 @@ export default function ProducerAnalyticsPage() {
                 <ChartBarIcon className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <h1 className={`text-2xl font-bold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                  {currentLang === 'en' ? 'Marketplace Analytics' : 'मार्केटप्लेस एनालिटिक्स'}
+                <h1 className={`text-2xl font-bold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                  {currentLang === "en" ? "Farm Performance Overview" : "फार्म प्रदर्शन अवलोकन"}
                 </h1>
-                <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                  {currentLang === 'en'
-                    ? 'Monitor listing momentum, sales velocity, and category performance to plan your next harvest.'
-                    : 'लिस्टिंग की गति, बिक्री की रफ्तार और श्रेणी प्रदर्शन को ट्रैक करें ताकि अगली फसल की योजना बना सकें।'}
+                <p className={`text-sm text-gray-600 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                  {currentLang === "en"
+                    ? "Review harvest output, buyer commitments, and input usage to plan upcoming cycles."
+                    : "आगामी चक्रों की योजना हेतु फसल उत्पादन, खरीदार प्रतिबद्धता और इनपुट उपयोग की समीक्षा करें।"}
                 </p>
               </div>
             </div>
-            <div className="flex flex-col items-start gap-2 sm:items-end">
-              <span className="text-xs font-medium text-gray-500">
-                {currentLang === 'en'
-                  ? `Visible listings: ${products.length.toLocaleString()}`
-                  : `दिखने वाली सूचियाँ: ${products.length.toLocaleString()}`}
-                {lastUpdated
-                  ? ` • ${currentLang === 'en' ? 'Updated' : 'अपडेट'} ${lastUpdated.toLocaleTimeString(currentLang === 'hi' ? 'hi-IN' : 'en-IN', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}`
-                  : ''}
-              </span>
-              <button
-                onClick={fetchProducts}
-                disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
-              >
-                <ArrowPathIcon className="h-5 w-5" />
-                {isLoading
-                  ? currentLang === 'en'
-                    ? 'Refreshing...'
-                    : 'रिफ्रेश हो रहा है...'
-                  : currentLang === 'en'
-                    ? 'Refresh metrics'
-                    : 'मेट्रिक्स रिफ्रेश करें'}
-              </button>
+            <div className="text-sm text-gray-500 text-left md:text-right">
+              <div className={currentLang === "hi" ? "font-hindi" : ""}>{summaryMeta.period}</div>
+              <div className={currentLang === "hi" ? "font-hindi" : ""}>{summaryMeta.updated}</div>
             </div>
           </div>
         </section>
 
-        {isLoading && (
-          <section className="bg-white border rounded-xl shadow-sm p-6 text-sm text-gray-600">
-            {currentLang === 'en' ? 'Loading analytics…' : 'एनालिटिक्स लोड हो रहा है…'}
-          </section>
-        )}
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {stats.map((card) => (
+            <StatCard key={card.label} {...card} />
+          ))}
+        </section>
 
-        {error && !isLoading && (
-          <section className="bg-red-50 border border-red-200 rounded-xl shadow-sm p-6 text-sm text-red-700">
-            {currentLang === 'en'
-              ? `${error}. Make sure GET /api/marketplace/products is implemented.`
-              : `${error}. सुनिश्चित करें कि GET /api/marketplace/products लागू किया गया है।`}
-          </section>
-        )}
-
-        {!isLoading && !error && (
-          <>
-            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {statCards.map((card) => (
-                <StatCard key={card.label} {...card} />
-              ))}
-            </section>
-
-            <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 rounded-xl border bg-white shadow-sm">
-                <div className="border-b border-gray-200 p-6">
-                  <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                    {currentLang === 'en' ? 'Category performance' : 'श्रेणी प्रदर्शन'}
-                  </h2>
-                </div>
-                <div className="p-6 space-y-5">
-                  {categoriesForDisplay.length === 0 && (
-                    <p className={`text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                      {currentLang === 'en'
-                        ? 'No marketplace listings yet. Publish a batch to view performance.'
-                        : 'अभी तक कोई लिस्टिंग नहीं है। प्रदर्शन देखने के लिए एक बैच प्रकाशित करें।'}
-                    </p>
-                  )}
-                  {categoriesForDisplay.map((category) => (
-                    <div key={category.name} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-900">{category.name}</span>
-                        <span className="text-xs text-gray-500">
-                          {currentLang === 'en'
-                            ? `${category.soldQty.toLocaleString()} sold`
-                            : `${category.soldQty.toLocaleString()} बिक्री`}
-                        </span>
-                      </div>
-                      <ProgressBar
-                        label={currentLang === 'en' ? 'Listed' : 'सूचीबद्ध'}
-                        value={category.listedQty}
-                        max={categoriesForDisplay[0]?.listedQty || 1}
-                        colorClass="bg-green-500"
-                      />
-                      <ProgressBar
-                        label={currentLang === 'en' ? 'Sold' : 'बिक्री'}
-                        value={category.soldQty}
-                        max={categoriesForDisplay[0]?.listedQty || 1}
-                        colorClass="bg-blue-500"
-                      />
-                      <div className="text-xs text-gray-500">
-                        {currentLang === 'en'
-                          ? `Revenue: ${INR.format(category.salesRevenue)}`
-                          : `राजस्व: ${INR.format(category.salesRevenue)}`}
-                      </div>
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-xl border bg-white shadow-sm">
+            <div className="border-b border-gray-200 p-6">
+              <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                {currentLang === "en" ? "Seasonal performance" : "मौसमी प्रदर्शन"}
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {seasonPerformance.map((season) => (
+                <div key={season.season} className="rounded-lg border border-gray-200 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                        {season.season}
+                      </h3>
+                      <p className={`mt-1 text-sm text-gray-600 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                        {season.cropMix}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border bg-white shadow-sm">
-                <div className="border-b border-gray-200 p-6">
-                  <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                    {currentLang === 'en' ? 'Key insights' : 'मुख्य अंतर्दृष्टि'}
-                  </h2>
-                </div>
-                <div className="p-6 space-y-4">
-                  {insights.map((insight) => (
-                    <InsightCard key={insight.title} {...insight} />
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-xl border bg-white shadow-sm">
-              <div className="border-b border-gray-200 p-6">
-                <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                  {currentLang === 'en' ? 'Daily activity' : 'दैनिक गतिविधि'}
-                </h2>
-              </div>
-              <div className="p-6 space-y-4">
-                {recentDays.length === 0 && (
-                  <p className={`text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                    {currentLang === 'en'
-                      ? 'Activity will appear once listings are published or marked as sold.'
-                      : 'जैसे ही सूची प्रकाशित या बेची जाती है, गतिविधि दिखाई देगी।'}
-                  </p>
-                )}
-                {recentDays.map((day) => (
-                  <div key={day.date} className="rounded-lg border border-gray-100 p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-900">{formatDateLabel(day.date, currentLang)}</span>
-                      <span className="text-xs text-gray-500">
-                        {currentLang === 'en'
-                          ? `${(day.soldQty / (day.listedQty || 1) * 100).toFixed(0)}% fulfilment`
-                          : `${(day.soldQty / (day.listedQty || 1) * 100).toFixed(0)}% पूर्ति`}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-gray-600">
+                      <span className={currentLang === "hi" ? "font-hindi" : ""}>
+                        {currentLang === "en" ? "Acreage" : "क्षेत्रफल"}:{" "}
+                        <span className="font-semibold text-gray-900">{season.acreage}</span>
+                      </span>
+                      <span className={currentLang === "hi" ? "font-hindi" : ""}>
+                        {currentLang === "en" ? "Yield" : "उत्पादन"}:{" "}
+                        <span className="font-semibold text-gray-900">{season.yield}</span>
+                      </span>
+                      <span className={currentLang === "hi" ? "font-hindi" : ""}>
+                        {currentLang === "en" ? "Sell-through" : "बिक्री प्रतिशत"}:{" "}
+                        <span className="font-semibold text-gray-900">{season.sellThrough}</span>
                       </span>
                     </div>
-                    <div className="mt-4 space-y-3">
-                      <ProgressBar
-                        label={currentLang === 'en' ? 'Listed' : 'सूचीबद्ध'}
-                        value={day.listedQty}
-                        max={maxDailyVolume}
-                        colorClass="bg-emerald-500"
-                      />
-                      <ProgressBar
-                        label={currentLang === 'en' ? 'Sold' : 'बिक्री'}
-                        value={day.soldQty}
-                        max={maxDailyVolume}
-                        colorClass="bg-sky-500"
-                      />
-                    </div>
                   </div>
+                  <p className={`mt-3 text-sm text-gray-500 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                    {season.highlight}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-white shadow-sm">
+            <div className="border-b border-gray-200 p-6">
+              <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                {currentLang === "en" ? "Key insights" : "मुख्य अंतर्दृष्टि"}
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {insights.map((insight) => (
+                <InsightCard key={insight.title} title={insight.title} description={insight.description} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 rounded-xl border bg-white shadow-sm">
+            <div className="border-b border-gray-200 p-6">
+              <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                {currentLang === "en" ? "Buyer commitments" : "खरीदार प्रतिबद्धताएँ"}
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {buyerCommitments.map((commitment) => {
+                const meta = commitmentStatusMeta[commitment.status]
+                return (
+                  <div key={commitment.buyer} className="rounded-lg border border-gray-200 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{commitment.buyer}</h3>
+                        <p className={`text-sm text-gray-600 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                          {commitment.volume}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-500">{commitment.price}</p>
+                        <span
+                          className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${meta.badge}`}
+                        >
+                          <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                          {meta.label}
+                        </span>
+                      </div>
+                    </div>
+                    <p className={`mt-3 text-sm text-gray-500 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                      {commitment.nextAction}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-white shadow-sm">
+            <div className="border-b border-gray-200 p-6">
+              <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+                {currentLang === "en" ? "Input utilisation" : "इनपुट उपयोग"}
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {inputUsage.map((metric) => (
+                <ProgressBar key={metric.label} {...metric} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-xl border bg-white shadow-sm overflow-hidden">
+          <div className="border-b border-gray-200 p-6 flex items-center justify-between">
+            <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === "hi" ? "font-hindi" : ""}`}>
+              {currentLang === "en" ? "Upcoming schedule" : "आगामी कार्यक्रम"}
+            </h2>
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+              <CalendarDaysIcon className="h-4 w-4" />
+              <span className={currentLang === "hi" ? "font-hindi" : ""}>
+                {currentLang === "en" ? "Next 10 days" : "अगले 10 दिन"}
+              </span>
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    {currentLang === "en" ? "Date" : "तारीख"}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    {currentLang === "en" ? "Activity" : "गतिविधि"}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    {currentLang === "en" ? "Location" : "स्थान"}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wider">
+                    {currentLang === "en" ? "Owner" : "उत्तरदायी"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {upcomingTasks.map((task) => (
+                  <tr key={`${task.date}-${task.activity}`} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">{task.date}</td>
+                    <td className={`px-4 py-3 text-gray-600 ${currentLang === "hi" ? "font-hindi" : ""}`}>{task.activity}</td>
+                    <td className={`px-4 py-3 text-gray-600 ${currentLang === "hi" ? "font-hindi" : ""}`}>{task.location}</td>
+                    <td className={`px-4 py-3 text-gray-600 ${currentLang === "hi" ? "font-hindi" : ""}`}>{task.owner}</td>
+                  </tr>
                 ))}
-              </div>
-            </section>
-          </>
-        )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
   )
@@ -495,17 +499,20 @@ type StatCardProps = {
 function StatCard({ label, value, helper, icon: Icon, iconBg, iconColor, trend }: StatCardProps) {
   return (
     <div className="rounded-xl border bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start gap-4">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon className={`h-6 w-6 ${iconColor}`} />
+        </div>
+        <div className="flex-1">
           <p className="text-sm font-medium text-gray-600">{label}</p>
           <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
           {helper && <p className="mt-1 text-xs text-gray-500">{helper}</p>}
           {trend && (
             <span
-              className={`mt-2 inline-flex items-center gap-1 text-sm ${trend.direction === 'up' ? 'text-green-600' : 'text-red-600'
+              className={`mt-3 inline-flex items-center gap-1 text-sm ${trend.direction === "up" ? "text-green-600" : "text-red-600"
                 }`}
             >
-              {trend.direction === 'up' ? (
+              {trend.direction === "up" ? (
                 <ArrowTrendingUpIcon className="h-4 w-4" />
               ) : (
                 <ArrowTrendingDownIcon className="h-4 w-4" />
@@ -513,9 +520,6 @@ function StatCard({ label, value, helper, icon: Icon, iconBg, iconColor, trend }
               {trend.value}
             </span>
           )}
-        </div>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${iconBg}`}>
-          <Icon className={`h-6 w-6 ${iconColor}`} />
         </div>
       </div>
     </div>
@@ -525,13 +529,14 @@ function StatCard({ label, value, helper, icon: Icon, iconBg, iconColor, trend }
 type ProgressBarProps = {
   label: string
   value: number
-  max: number
+  target: number
+  helper: string
   colorClass: string
 }
 
-function ProgressBar({ label, value, max, colorClass }: ProgressBarProps) {
-  const safeMax = Math.max(max, 1)
-  const width = Math.min(100, (value / safeMax) * 100)
+function ProgressBar({ label, value, target, helper, colorClass }: ProgressBarProps) {
+  const safeTarget = Math.max(target, 1)
+  const width = Math.min(100, (value / safeTarget) * 100)
 
   return (
     <div>
@@ -542,6 +547,7 @@ function ProgressBar({ label, value, max, colorClass }: ProgressBarProps) {
       <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
         <div className={`h-2 rounded-full ${colorClass}`} style={{ width: `${width}%` }} />
       </div>
+      <p className="mt-2 text-xs text-gray-500">{helper}</p>
     </div>
   )
 }
@@ -555,7 +561,7 @@ function InsightCard({ title, description }: InsightCardProps) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      <p className="mt-2 text-xs text-gray-600 leading-relaxed">{description}</p>
+      <p className="mt-2 text-sm text-gray-600 leading-relaxed">{description}</p>
     </div>
   )
 }

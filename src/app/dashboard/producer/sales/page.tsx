@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { format } from 'date-fns';
 import PageHeader from '@/components/PageHeader';
 import { Download } from 'lucide-react';
@@ -51,7 +50,8 @@ const statusBadge = (s: TxStatus) =>
 
 export default function SalesPage() {
   const [transactions] = useState<SaleTransaction[]>(MOCK_TRANSACTIONS);
-  const [participantFilter, setParticipantFilter] = useState<'All' | ParticipantType>('All');
+  type ParticipantFilterOption = 'All' | ParticipantType;
+  const [participantFilter, setParticipantFilter] = useState<ParticipantFilterOption>('All');
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -119,7 +119,7 @@ export default function SalesPage() {
           />
           <select
             value={participantFilter}
-            onChange={(e) => setParticipantFilter(e.target.value as any)}
+            onChange={(event) => setParticipantFilter(event.target.value as ParticipantFilterOption)}
             className="border p-2 rounded"
           >
             <option value="All">All Participants</option>

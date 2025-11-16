@@ -1,26 +1,27 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
 import type { Product } from '@/types/product'
-import { useTranslation } from 'react-i18next'
+import type { JsonRpcSigner } from 'ethers'
 import {
   ArrowLeftIcon,
-  GlobeAltIcon,
   PlusCircleIcon,
   TagIcon,
   TrashIcon,
   WalletIcon
 } from '@heroicons/react/24/outline'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
 
 export default function ListForSalePage() {
   const router = useRouter()
-  const { user, contract, signer, connectWallet, isConnected } = useWeb3()
-  const { i18n } = useTranslation()
-  const initialLang = (i18n.language as 'en' | 'hi') || 'en'
-  const [currentLang, setCurrentLang] = useState<'en' | 'hi'>(initialLang)
+  const pathname = usePathname()
+  const dashboardBasePath = pathname?.includes('/dashboard/intermediary') ? '/dashboard/intermediary' : '/dashboard/producer'
+  const { user, signer, connectWallet, isConnected } = useWeb3()
+  const { language: currentLang } = useLanguage()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
@@ -39,18 +40,6 @@ export default function ListForSalePage() {
     }
   }, [isConnected, connectWallet])
 
-  const toggleLanguage = () => {
-    const newLang = currentLang === 'en' ? 'hi' : 'en'
-    setCurrentLang(newLang)
-    i18n.changeLanguage(newLang)
-    try {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('language', newLang)
-        document.documentElement.lang = newLang
-      }
-    } catch { }
-  }
-
   const resetForm = () => {
     setProductForm({
       name: '',
@@ -67,7 +56,7 @@ export default function ListForSalePage() {
     e.preventDefault()
 
     // Will hold a signer returned by connectWallet(false) if we call it below
-    let web3Signer: any = null
+    let web3Signer: JsonRpcSigner | null = null
 
     // Check wallet and registration
     if (!isConnected) {
@@ -78,8 +67,9 @@ export default function ListForSalePage() {
         // from requiring a server-side user doc.
         // Use the returned signer to avoid relying on stale `signer` state in
         // the same render cycle.
-  web3Signer = await connectWallet(false)
-      } catch (err) {
+        web3Signer = await connectWallet(false)
+      } catch (error) {
+        console.error('Wallet connection failed:', error)
         alert(
           currentLang === 'en'
             ? 'Please install MetaMask and connect your wallet'
@@ -133,8 +123,14 @@ export default function ListForSalePage() {
         let errBody = null
         try {
           errBody = await res.json()
-        } catch (_e) {
-          try { errBody = await res.text() } catch { errBody = null }
+        } catch (jsonError) {
+          console.warn('Failed to parse marketplace error JSON:', jsonError)
+          try {
+            errBody = await res.text()
+          } catch (textError) {
+            console.warn('Failed to read marketplace error text:', textError)
+            errBody = null
+          }
         }
         console.error('Marketplace POST failed:', res.status, errBody)
         alert((currentLang === 'en' ? 'Failed to list product: ' : 'उत्पाद सूचीबद्ध करने में विफल: ') + (errBody?.error || errBody || res.status))
@@ -149,7 +145,7 @@ export default function ListForSalePage() {
       } catch (e) {
         console.log('Product created, but response JSON parse failed', e)
       }
-      router.push('/dashboard/marketplace')
+      router.push(`${dashboardBasePath}/listings`)
     } catch (err) {
       console.error('Submit error:', err)
       alert(
@@ -173,20 +169,13 @@ export default function ListForSalePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <Link
-              href="/dashboard/producer"
+              href={dashboardBasePath}
               className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeftIcon className="w-5 h-5" />
               <span>{currentLang === 'en' ? 'Back to Dashboard' : 'डैशबोर्ड पर वापस'}</span>
             </Link>
-            <button
-              onClick={toggleLanguage}
-              data-local-language-toggle
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <GlobeAltIcon className="w-4 h-4" />
-              {currentLang === 'en' ? 'हिंदी' : 'English'}
-            </button>
+            <LanguageToggle />
           </div>
         </div>
       </header>
@@ -263,7 +252,7 @@ export default function ListForSalePage() {
                   <option value="vegetables">{currentLang === 'en' ? 'Vegetables' : 'सब्ज़ियाँ'}</option>
                   <option value="fruits">{currentLang === 'en' ? 'Fruits' : 'फल'}</option>
                   <option value="grains">{currentLang === 'en' ? 'Grains' : 'अनाज'}</option>
-                  <option value="dairy">{currentLang === 'en' ? 'Dairy' : 'डेयरी'}</option>
+                  <option value="oilseeds">{currentLang === 'en' ? 'Oilseeds' : 'तेलहन'}</option>
                   <option value="other">{currentLang === 'en' ? 'Other' : 'अन्य'}</option>
                 </select>
               </div>
