@@ -1,81 +1,50 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Globe } from "lucide-react";
-import { usePathname } from "next/navigation";
-import i18n from "@/lib/i18n";
+import { GlobeAltIcon } from "@heroicons/react/24/outline";
+import { useLanguage } from "@/hooks/useLanguage";
 
-export default function LanguageToggle() {
-  const pathname = usePathname();
-  const [lang, setLang] = useState<string>(i18n.language || "en");
-  const [hidden, setHidden] = useState<boolean>(false);
+type LanguageToggleProps = {
+  className?: string;
+  variant?: "default" | "ghost" | "inverted";
+};
 
-  const STORAGE_KEY = "language";
+export default function LanguageToggle({ className, variant = "default" }: LanguageToggleProps) {
+  const { language, toggleLanguage } = useLanguage();
+  const targetLabel = language === "en" ? "हिंदी" : "English";
 
-  useEffect(() => {
-    const resolveInitialLanguage = () => {
-      try {
-        const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-        return stored || i18n.language || "en";
-      } catch {
-        return i18n.language || "en";
-      }
-    };
+  const baseClasses =
+    "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2";
 
-    const initial = resolveInitialLanguage();
-    setLang(initial);
-
-    if (initial !== i18n.language) {
-      i18n.changeLanguage(initial);
+  const variantConfig = (() => {
+    switch (variant) {
+      case "ghost":
+        return {
+          button: "border border-white/60 bg-transparent text-white hover:bg-white/10 focus-visible:ring-white",
+          icon: "text-white"
+        };
+      case "inverted":
+        return {
+          button: "border border-transparent bg-white text-gray-900 shadow-sm hover:bg-white focus-visible:ring-white/80",
+          icon: "text-gray-900"
+        };
+      default:
+        return {
+          button: "border border-gray-300 bg-transparent text-gray-900 hover:bg-white/60 focus-visible:ring-gray-400",
+          icon: "text-gray-900"
+        };
     }
+  })();
 
-    if (typeof document !== "undefined") {
-      document.documentElement.setAttribute("lang", initial);
-    }
-
-    let observer: MutationObserver | null = null;
-
-    const evaluateTogglePresence = () => {
-      if (typeof document === "undefined") return;
-      const localToggle = document.querySelector("[data-local-language-toggle]");
-      setHidden(Boolean(localToggle));
-    };
-
-    evaluateTogglePresence();
-
-    if (typeof document !== "undefined") {
-      observer = new MutationObserver(() => evaluateTogglePresence());
-      observer.observe(document.body, { childList: true, subtree: true });
-    }
-
-    return () => {
-      observer?.disconnect();
-    };
-  }, [pathname]);
-
-  const toggle = () => {
-    const next = lang === "en" ? "hi" : "en";
-    i18n.changeLanguage(next);
-    setLang(next);
-    try {
-      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, next);
-      if (typeof document !== "undefined") document.documentElement.setAttribute("lang", next);
-    } catch { }
-  };
-
-  const targetLabel = lang === "en" ? "हिंदी" : "English";
-
-  if (hidden) return null;
+  const classes = [baseClasses, variantConfig.button, className].filter(Boolean).join(" ");
 
   return (
     <button
       type="button"
-      onClick={toggle}
-      aria-label="Toggle language"
-      className="fixed top-4 right-4 z-50 inline-flex items-center gap-2 rounded-full bg-white/90 backdrop-blur px-4 py-2 text-sm font-medium text-gray-800 shadow-lg ring-1 ring-gray-200 hover:bg-white"
+      onClick={toggleLanguage}
+      className={classes}
     >
-      <Globe className="h-4 w-4" />
-      {targetLabel}
+      <GlobeAltIcon className={`h-4 w-4 ${variantConfig.icon}`} />
+      <span>{targetLabel}</span>
     </button>
   );
 }
