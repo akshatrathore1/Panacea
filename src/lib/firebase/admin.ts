@@ -1,7 +1,5 @@
-import { App, cert, getApps,getApp,initializeApp } from 'firebase-admin/app'
+import { cert, getApps, getApp, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
-
-let app: App | undefined
 
 const createAdminApp = () => {
     if (getApps().length) {
