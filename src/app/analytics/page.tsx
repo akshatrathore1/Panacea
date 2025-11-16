@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
     ArrowLeftIcon,
     ChartBarIcon,
@@ -10,31 +9,17 @@ import {
     ArrowTrendingDownIcon,
     CurrencyRupeeIcon,
     TruckIcon,
-    UsersIcon,
-    GlobeAltIcon
+    UsersIcon
 } from '@heroicons/react/24/outline'
-import { formatNumber } from '@/lib/format'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
 
 type Timeframe = '7days' | '30days' | '90days' | '1year'
 type PriceTrend = 'up' | 'down'
 
 export default function AnalyticsPage() {
-    const { i18n } = useTranslation()
-    const initialLang = (i18n.language as 'en' | 'hi') || 'en'
-    const [currentLang, setCurrentLang] = useState<'en' | 'hi'>(initialLang)
+    const { language: currentLang } = useLanguage()
     const [timeframe, setTimeframe] = useState<Timeframe>('30days')
-
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
-        i18n.changeLanguage(newLang)
-        try {
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('language', newLang)
-                document.documentElement.lang = newLang
-            }
-        } catch { }
-    }
 
     const overallStats = {
         totalTransactions: 1247,
@@ -50,11 +35,11 @@ export default function AnalyticsPage() {
         trend: PriceTrend
         volume: string
     }> = [
-            { product: 'Wheat', currentPrice: 45, change: 2.5, trend: 'up', volume: '2.5K kg' },
-            { product: 'Rice', currentPrice: 85, change: -1.2, trend: 'down', volume: '1.8K kg' },
-            { product: 'Vegetables', currentPrice: 65, change: 5.8, trend: 'up', volume: '950 kg' },
-            { product: 'Fruits', currentPrice: 120, change: -3.1, trend: 'down', volume: '650 kg' },
-            { product: 'Milk', currentPrice: 55, change: 1.8, trend: 'up', volume: '1.2K L' }
+            { product: 'Lokwan Wheat', currentPrice: 45, change: 2.5, trend: 'up', volume: '2.8K kg' },
+            { product: 'Basmati Rice', currentPrice: 92, change: -1.2, trend: 'down', volume: '1.9K kg' },
+            { product: 'Toor Dal', currentPrice: 86, change: 4.1, trend: 'up', volume: '1.1K kg' },
+            { product: 'Pearl Millet (Bajra)', currentPrice: 38, change: 3.6, trend: 'up', volume: '840 kg' },
+            { product: 'Mustard Oil', currentPrice: 120, change: 2.1, trend: 'up', volume: '680 L' }
         ]
 
     const regionData = [
@@ -92,14 +77,7 @@ export default function AnalyticsPage() {
                             <ArrowLeftIcon className="h-5 w-5" />
                             <span>{currentLang === 'en' ? 'Back to Dashboard' : 'डैशबोर्ड पर वापस'}</span>
                         </Link>
-                        <button
-                            onClick={toggleLanguage}
-                            data-local-language-toggle
-                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        >
-                            <GlobeAltIcon className="h-4 w-4" />
-                            {currentLang === 'en' ? 'हिंदी' : 'English'}
-                        </button>
+                        <LanguageToggle />
                     </div>
                 </div>
             </header>
@@ -118,7 +96,7 @@ export default function AnalyticsPage() {
                                 <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en'
                                         ? 'Track marketplace performance, pricing trends, and supply chain health in real time.'
-                                        : 'मार्केटप्लेस प्रदर्शन, मूल्य रुझान और आपूर्ति श्रृंखला की स्थिति को रीयल-टाइम में ट्रैक करें।'}
+                                        : 'बाज़ार प्रदर्शन, मूल्य रुझान और आपूर्ति श्रृंखला की स्थिति को रीयल-टाइम में ट्रैक करें।'}
                                 </p>
                             </div>
                         </div>
@@ -326,7 +304,7 @@ export default function AnalyticsPage() {
                                     <span className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Customer Satisfaction' : 'ग्राहक संतुष्टि'}
                                     </span>
-                                    <span className="text-sm font-bold text-gray-900">{supplyChainMetrics.customerSatisfaction}/5 ★</span>
+                                    <span className="text-sm font-bold text-gray-900">{supplyChainMetrics.customerSatisfaction}/5</span>
                                 </div>
                                 <div className="h-2 w-full rounded-full bg-gray-200">
                                     <div className="h-2 rounded-full bg-purple-600" style={{ width: '92%' }}></div>
@@ -411,8 +389,8 @@ export default function AnalyticsPage() {
                                 </h3>
                                 <p className={`text-sm text-green-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en'
-                                        ? 'Vegetable prices increased by 5.8% due to high demand in urban areas.'
-                                        : 'शहरी क्षेत्रों में उच्च मांग के कारण सब्जियों की कीमतों में 5.8% की वृद्धि हुई।'}
+                                        ? 'Lokwan wheat prices firmed up by 2.5% as cooperative mills stock up ahead of festive demand.'
+                                        : 'त्योहारी मांग से पहले सहकारी मिलों द्वारा स्टॉक बढ़ाने से लोकवन गेहूं की कीमतों में 2.5% की वृद्धि हुई।'}
                                 </p>
                             </div>
                             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -421,8 +399,8 @@ export default function AnalyticsPage() {
                                 </h3>
                                 <p className={`text-sm text-blue-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en'
-                                        ? 'Haryana leads with 456 transactions, contributing 44% of total platform activity.'
-                                        : 'हरियाणा 456 लेनदेन के साथ अग्रणी है, जो कुल प्लेटफॉर्म गतिविधि का 44% योगदान देता है।'}
+                                        ? 'Punjab retailers drove Basmati rice trading volumes, accounting for 44% of platform activity.'
+                                        : 'पंजाब के रिटेलर्स ने बासमती चावल के व्यापारिक वॉल्यूम को बढ़ाया, जिससे प्लेटफॉर्म गतिविधि में 44% योगदान मिला।'}
                                 </p>
                             </div>
                             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
@@ -431,8 +409,8 @@ export default function AnalyticsPage() {
                                 </h3>
                                 <p className={`text-sm text-yellow-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en'
-                                        ? 'Platform maintains 8.7/10 quality score with 94% on-time delivery rate.'
-                                        : 'प्लेटफॉर्म 94% समय पर डिलीवरी दर के साथ 8.7/10 गुणवत्ता स्कोर बनाए रखता है।'}
+                                        ? 'Mustard oil lots continue to score 8.7/10 on quality checks with 94% timely dispatches.'
+                                        : 'सरसों तेल के लॉट्स 8.7/10 गुणवत्ता स्कोर और 94% समय पर डिस्पैच के साथ स्थिर बने हुए हैं।'}
                                 </p>
                             </div>
                         </div>

@@ -1,25 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import {
-    GlobeAltIcon,
     ShieldCheckIcon,
     CubeTransparentIcon,
     UserGroupIcon,
     ChartBarIcon,
     QrCodeIcon
 } from '@heroicons/react/24/outline'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
 
 export default function HomePage() {
-    const { t, i18n } = useTranslation()
-    const [currentLang, setCurrentLang] = useState('en')
+    const { t } = useTranslation()
+    const { language: currentLang } = useLanguage()
 
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
-        i18n.changeLanguage(newLang)
+    const heroImages = ['/home1.jpg', '/home2.jpg', '/home3.jpg', '/home4.jpg', '/home5.jpg']
+    const stakeholderImages = {
+        producer: '/producer.jpg',
+        intermediary: '/intermediary.jpg',
+        retailer: '/retailer.jpg',
+        consumer: '/consumer.jpg'
+    }
+
+    const handleScrollToTop = () => {
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
     }
 
     const features = [
@@ -60,7 +69,8 @@ export default function HomePage() {
                 ? 'Farmers and agricultural producers'
                 : 'किसान और कृषि उत्पादक',
             icon: '🌾',
-            href: '/register?role=producer'
+            href: '/register?role=producer',
+            bgImage: stakeholderImages.producer
         },
         {
             title: t('intermediary'),
@@ -68,7 +78,8 @@ export default function HomePage() {
                 ? 'Distributors, agents, and aggregators'
                 : 'वितरक, एजेंट और एग्रीगेटर',
             icon: '🚛',
-            href: '/register?role=intermediary'
+            href: '/register?role=intermediary',
+            bgImage: stakeholderImages.intermediary
         },
         {
             title: t('retailer'),
@@ -76,7 +87,8 @@ export default function HomePage() {
                 ? 'Wholesalers and retail vendors'
                 : 'थोक विक्रेता और खुदरा विक्रेता',
             icon: '🏪',
-            href: '/register?role=retailer'
+            href: '/register?role=retailer',
+            bgImage: stakeholderImages.retailer
         },
         {
             title: t('consumer'),
@@ -84,12 +96,13 @@ export default function HomePage() {
                 ? 'End consumers and buyers'
                 : 'अंतिम उपभोक्ता और खरीदार',
             icon: '👥',
-            href: '/register?role=consumer'
+            href: '/register?role=consumer',
+            bgImage: stakeholderImages.consumer
         }
     ]
 
     return (
-        <div className="min-h-screen">
+        <div id="top" className="min-h-screen">
             {/* Header */}
             <header className="gov-header sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -109,87 +122,85 @@ export default function HomePage() {
                         </div>
 
                         <div className="flex items-center space-x-4">
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-md transition-colors"
-                                data-local-language-toggle
-                            >
-                                <GlobeAltIcon className="w-4 h-4" />
-                                <span className="text-sm font-medium">
-                                    {currentLang === 'en' ? 'हिंदी' : 'English'}
-                                </span>
-                            </button>
+                            <LanguageToggle variant="inverted" />
                         </div>
                     </div>
                 </div>
             </header>
 
-            {/* Hero Section */}
-            <section className="relative py-20 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto text-center">
-                    <h2 className={`text-4xl md:text-6xl font-bold mb-6 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en' ? (
-                            <>
-                                <span className="text-orange-600">Transparent</span>{' '}
-                                <span className="text-green-600">Agricultural</span>{' '}
-                                <span className="text-blue-600">Supply Chain</span>
-                            </>
-                        ) : (
-                            <>
-                                <span className="text-orange-600">पारदर्शी</span>{' '}
-                                <span className="text-green-600">कृषि</span>{' '}
-                                <span className="text-blue-600">आपूर्ति श्रृंखला</span>
-                            </>
-                        )}
-                    </h2>
+            {/* Hero + Features Section */}
+            <section className="relative overflow-hidden">
+                <BackgroundSlideshow images={heroImages} />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-white/85" aria-hidden="true" />
 
-                    <p className={`text-xl text-gray-600 mb-8 max-w-3xl mx-auto ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {t('platform_description')}
-                    </p>
+                <div className="relative py-20 px-4 sm:px-6 lg:px-8 text-center text-white">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="inline-flex w-full sm:w-auto flex-col items-center gap-6 rounded-[2.5rem] bg-white/80 text-gray-900 px-6 py-10 sm:px-10 sm:py-12 shadow-2xl">
+                            <h2 className={`text-4xl md:text-6xl font-bold ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                {currentLang === 'en' ? (
+                                    <span className="block text-center text-balance whitespace-normal sm:whitespace-nowrap">
+                                        <span className="text-orange-600">Transparent</span>{' '}
+                                        <span className="text-green-600">Agricultural</span>{' '}
+                                        <span className="text-blue-600">Supply Chain</span>
+                                    </span>
+                                ) : (
+                                    <span className="block text-center text-balance whitespace-normal sm:whitespace-nowrap">
+                                        <span className="text-orange-600">पारदर्शी</span>{' '}
+                                        <span className="text-green-600">कृषि</span>{' '}
+                                        <span className="text-blue-600">आपूर्ति श्रृंखला</span>
+                                    </span>
+                                )}
+                            </h2>
 
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                        <Link
-                            href="/register"
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
-                        >
-                            {t('register')}
-                        </Link>
+                            <p className={`text-lg md:text-xl text-gray-700 max-w-3xl mx-auto px-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                {t('platform_description')}
+                            </p>
 
-                        <Link
-                            href="/login"
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center space-x-2"
-                        >
-                            {t('login')}
-                        </Link>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
+                                <Link
+                                    href="/register"
+                                    className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors w-full sm:w-auto"
+                                >
+                                    {t('register')}
+                                </Link>
 
+                                <Link
+                                    href="/login"
+                                    className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors flex items-center space-x-2 w-full sm:w-auto justify-center"
+                                >
+                                    {t('login')}
+                                </Link>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </section>
 
-            {/* Features Section */}
-            <section className="py-20 bg-white">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <h3 className={`text-3xl font-bold text-center mb-16 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                        {currentLang === 'en' ? 'Why Choose KrashiAalok?' : 'कृषिआलोक क्यों चुनें?'}
-                    </h3>
+                <div className="relative px-4 sm:px-6 lg:px-8 pb-20">
+                    <div className="max-w-7xl mx-auto bg-white/85 rounded-[2.5rem] shadow-2xl p-8 sm:p-10">
+                        <div className="text-center mb-16">
+                            <h3 className={`text-3xl font-bold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                {currentLang === 'en' ? 'Why Choose KrashiAalok?' : 'कृषिआलोक क्यों चुनें?'}
+                            </h3>
+                        </div>
 
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {features.map((feature, index) => {
-                            const IconComponent = feature.icon
-                            return (
-                                <div key={index} className="text-center p-6 rounded-lg border hover:shadow-lg transition-shadow">
-                                    <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <IconComponent className="w-8 h-8 text-orange-600" />
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {features.map((feature, index) => {
+                                const IconComponent = feature.icon
+                                return (
+                                    <div key={index} className="text-center p-6 rounded-xl border border-white/80 bg-white/70 hover:bg-white transition-colors text-gray-900 shadow-lg">
+                                        <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <IconComponent className="w-8 h-8 text-orange-600" />
+                                        </div>
+                                        <h4 className={`text-xl font-semibold mb-3 text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {feature.title}
+                                        </h4>
+                                        <p className={`text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {feature.description}
+                                        </p>
                                     </div>
-                                    <h4 className={`text-xl font-semibold mb-3 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {feature.title}
-                                    </h4>
-                                    <p className={`text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                        {feature.description}
-                                    </p>
-                                </div>
-                            )
-                        })}
+                                )
+                            })}
+                        </div>
                     </div>
                 </div>
             </section>
@@ -211,14 +222,19 @@ export default function HomePage() {
                             <Link
                                 key={index}
                                 href={role.href}
-                                className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border-2 border-transparent hover:border-orange-200 card-hover"
+                                className="relative p-6 rounded-xl shadow-sm transition-shadow border-2 border-transparent hover:border-orange-200 card-hover overflow-hidden text-white"
+                                style={{
+                                    backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.20), rgba(0,0,0,0.20)), url(${role.bgImage})`,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center'
+                                }}
                             >
-                                <div className="text-center">
-                                    <div className="text-4xl mb-4">{role.icon}</div>
+                                <div className="relative text-center drop-shadow-lg">
+                                    <div className="mb-4 h-10" aria-hidden="true" />
                                     <h4 className={`text-xl font-semibold mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {role.title}
                                     </h4>
-                                    <p className={`text-gray-600 text-sm ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                    <p className={`text-sm text-white/90 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {role.description}
                                     </p>
                                 </div>
@@ -301,7 +317,15 @@ export default function HomePage() {
                                 {currentLang === 'en' ? 'Platform' : 'मंच'}
                             </h6>
                             <ul className="space-y-2 text-gray-400">
-                                <li><Link href="/about" className="hover:text-white">{t('about')}</Link></li>
+                                <li>
+                                    <button
+                                        type="button"
+                                        onClick={handleScrollToTop}
+                                        className="hover:text-white transition-colors"
+                                    >
+                                        {t('about')}
+                                    </button>
+                                </li>
                                 <li><Link href="/marketplace" className="hover:text-white">{t('marketplace')}</Link></li>
                                 <li><Link href="/analytics" className="hover:text-white">{t('analytics')}</Link></li>
                             </ul>
@@ -314,7 +338,11 @@ export default function HomePage() {
                             <ul className="space-y-2 text-gray-400">
                                 <li><Link href="/help" className="hover:text-white">Help Center</Link></li>
                                 <li><Link href="/contact" className="hover:text-white">{t('contact')}</Link></li>
-                                <li><Link href="/dashboard/community" className="hover:text-white">Community</Link></li>
+                                <li>
+                                    <Link href="/dashboard/community" className="hover:text-white">
+                                        {currentLang === 'en' ? 'Discussion Forum' : 'चर्चा मंच'}
+                                    </Link>
+                                </li>
                             </ul>
                         </div>
 
@@ -335,6 +363,41 @@ export default function HomePage() {
                     </div>
                 </div>
             </footer>
+        </div>
+    )
+}
+
+function BackgroundSlideshow({ images }: { images: string[] }) {
+    const validImages = images.filter(Boolean)
+    const [activeIndex, setActiveIndex] = useState(0)
+
+    useEffect(() => {
+        if (!validImages.length) return
+        setActiveIndex(0)
+
+        if (validImages.length < 2) return
+        const interval = setInterval(() => {
+            setActiveIndex((prev) => (prev + 1) % validImages.length)
+        }, 11000) // 10s display + 1s fade
+
+        return () => clearInterval(interval)
+    }, [validImages.length])
+
+    if (!validImages.length) return null
+
+    return (
+        <div className="bg-slideshow" aria-hidden="true">
+            {validImages.map((src, index) => (
+                <span
+                    key={`${src}-${index}`}
+                    className="bg-slideshow__slide"
+                    style={{
+                        backgroundImage: `url(${src})`,
+                        opacity: activeIndex === index ? 1 : 0,
+                        transform: activeIndex === index ? 'scale(1.05)' : 'scale(1)'
+                    }}
+                />
+            ))}
         </div>
     )
 }
