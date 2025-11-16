@@ -1,41 +1,186 @@
 'use client'
 
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
-    BuildingStorefrontIcon,
     ShoppingCartIcon,
     CurrencyRupeeIcon,
-    UsersIcon,
-    TruckIcon,
-    ClockIcon,
     StarIcon,
     QrCodeIcon,
     ChartBarIcon,
     ExclamationTriangleIcon,
-    CheckCircleIcon,
-    EyeIcon,
-    GlobeAltIcon
+    BellIcon,
+    ChatBubbleLeftRightIcon,
+    ArrowRightIcon
 } from '@heroicons/react/24/outline'
 import { formatNumber } from '@/lib/format'
 import Link from 'next/link'
 import LogoutButton from '@/components/LogoutButton'
+import { useWeb3 } from '@/components/Providers'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
+import type { LanguageCode } from '@/lib/language'
+
+const RETAILER_NOTIFICATION_TEMPLATES = [
+    {
+        id: 'RET-NOT-001',
+        messages: {
+            en: 'Low stock warning for Fresh Vegetables batch KA-VEG-2024-011',
+            hi: 'ताज़ी सब्ज़ी बैच KA-VEG-2024-011 के लिए कम स्टॉक चेतावनी'
+        },
+        timestamps: {
+            en: 'Just now',
+            hi: 'अभी अभी'
+        },
+        isNew: true
+    },
+    {
+        id: 'RET-NOT-002',
+        messages: {
+            en: 'New customer request for stone-ground wheat flour',
+            hi: 'पिसे हुए गेहूं के आटे के लिए नया ग्राहक अनुरोध'
+        },
+        timestamps: {
+            en: '3 hours ago',
+            hi: '3 घंटे पहले'
+        },
+        isNew: false
+    }
+]
+
+const RETAILER_COMMODITY_TRANSLATIONS: Record<string, string> = {
+    'Organic Wheat': 'जैविक गेहूं',
+    'Basmati Rice': 'बासमती चावल',
+    'Fresh Vegetables': 'ताज़ी सब्ज़ियाँ',
+    'Organic Tomatoes': 'जैविक टमाटर',
+    'Stone-Ground Wheat Flour': 'पिसा हुआ गेहूं का आटा'
+}
 
 export default function RetailerDashboard() {
-    const { i18n } = useTranslation()
-    const [currentLang, setCurrentLang] = useState('en')
+    const { language: currentLang } = useLanguage()
+    const currentLangRef = useRef<LanguageCode>(currentLang)
+    const { user } = useWeb3()
 
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        setCurrentLang(newLang)
-        i18n.changeLanguage(newLang)
+    const notificationsUserToken = useMemo(() => {
+        const keySource = (user?.address || user?.phone || 'anon').toString().toLowerCase()
+        return keySource.replace(/[^a-z0-9:\-]/g, '-')
+    }, [user?.address, user?.phone])
+
+    const notificationsStorageKey = useMemo(
+        () => `notifications-read-retailer-${notificationsUserToken}`,
+        [notificationsUserToken]
+    )
+    const notificationsSessionKey = useMemo(
+        () => `notifications-session-retailer-${notificationsUserToken}`,
+        [notificationsUserToken]
+    )
+
+    const buildNotifications = (lang: LanguageCode) =>
+        RETAILER_NOTIFICATION_TEMPLATES.map((template) => ({
+            id: template.id,
+            message: template.messages[lang] ?? template.messages.en,
+            timestamp: template.timestamps[lang] ?? template.timestamps.en,
+            isNew: template.isNew
+        }))
+
+    const [notifications, setNotifications] = useState(() => buildNotifications(currentLang))
+    const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+    const notificationsButtonRef = useRef<HTMLButtonElement | null>(null)
+    const notificationsPanelRef = useRef<HTMLDivElement | null>(null)
+    const [hasSeenNotifications, setHasSeenNotifications] = useState(false)
+
+    const handleNotificationsClick = () => {
+        setShowNotificationPopup((prev) => !prev)
     }
+
+    useEffect(() => {
+        setNotifications((prev) =>
+            prev.map((notification) => {
+                const template = RETAILER_NOTIFICATION_TEMPLATES.find((t) => t.id === notification.id)
+                if (!template) return notification
+                return {
+                    ...notification,
+                    message: template.messages[currentLang] ?? template.messages.en,
+                    timestamp: template.timestamps[currentLang] ?? template.timestamps.en
+                }
+            })
+        )
+    }, [currentLang])
+
+    useEffect(() => {
+        currentLangRef.current = currentLang
+    }, [currentLang])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const storedStatus = window.localStorage.getItem(notificationsStorageKey)
+        const sessionStatus = window.sessionStorage.getItem(notificationsSessionKey)
+
+        if (storedStatus === 'dismissed' || sessionStatus === 'dismissed') {
+            setHasSeenNotifications(true)
+            setNotifications((prev) => prev.map((notification) => ({ ...notification, isNew: false })))
+        } else {
+            setHasSeenNotifications(false)
+            if (!sessionStatus) {
+                window.sessionStorage.setItem(notificationsSessionKey, 'pending')
+            }
+        }
+    }, [notificationsStorageKey, notificationsSessionKey])
+
+    useEffect(() => {
+        setNotifications(buildNotifications(currentLangRef.current))
+    }, [notificationsStorageKey])
+
+    useEffect(() => {
+        if (!showNotificationPopup) return
+        setNotifications((prev) => prev.map((notification) => ({ ...notification, isNew: false })))
+        setHasSeenNotifications(true)
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(notificationsStorageKey, 'dismissed')
+            window.sessionStorage.setItem(notificationsSessionKey, 'dismissed')
+        }
+    }, [showNotificationPopup, notificationsStorageKey, notificationsSessionKey])
+
+    useEffect(() => {
+        if (!showNotificationPopup) return
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node
+            if (notificationsPanelRef.current?.contains(target)) return
+            if (notificationsButtonRef.current?.contains(target)) return
+            setShowNotificationPopup(false)
+        }
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowNotificationPopup(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('keydown', handleEscape)
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('keydown', handleEscape)
+        }
+    }, [showNotificationPopup])
+
+    const hasUnreadNotifications = !hasSeenNotifications && notifications.some((notification) => notification.isNew)
+
+    const translateCommodity = (value: string) =>
+        currentLang === 'en' ? value : RETAILER_COMMODITY_TRANSLATIONS[value] ?? value
+
+    const roleLabel = currentLang === 'en' ? 'Retailer' : 'रिटेलर'
+
+    const welcomeSubtitle = currentLang === 'en'
+        ? 'Manage store performance and enhance customer experience'
+        : 'स्टोर प्रदर्शन प्रबंधित करें और अपने ग्राहकों के अनुभव को बेहतर बनाएं'
 
     // Mock data for retailer operations
     const stats = {
         totalProducts: 89,
         todaySales: 45230,
-        pendingOrders: 12,
+        lowStockAlerts: 5,
         customerSatisfaction: 4.6
     }
 
@@ -78,32 +223,6 @@ export default function RetailerDashboard() {
         }
     ]
 
-    const recentOrders = [
-        {
-            id: 'ORD-R-2024-156',
-            customerName: 'Priya Sharma',
-            items: [
-                { product: 'Organic Wheat', quantity: '5 kg', batchId: 'KA-WH-2024-003' },
-                { product: 'Basmati Rice', quantity: '2 kg', batchId: 'KA-RIC-2024-007' }
-            ],
-            total: 395,
-            timestamp: '2024-01-14 14:30',
-            status: 'completed',
-            paymentMethod: 'UPI'
-        },
-        {
-            id: 'ORD-R-2024-157',
-            customerName: 'Raj Patel',
-            items: [
-                { product: 'Fresh Vegetables', quantity: '3 kg', batchId: 'KA-VEG-2024-011' }
-            ],
-            total: 195,
-            timestamp: '2024-01-14 15:45',
-            status: 'pending',
-            paymentMethod: 'Cash'
-        }
-    ]
-
     const customerRequests = [
         {
             id: 'REQ-001',
@@ -117,11 +236,36 @@ export default function RetailerDashboard() {
         {
             id: 'REQ-002',
             customerName: 'Vikram Singh',
-            productRequested: 'Fresh Milk',
-            quantity: '5 liters',
-            priceRange: '₹55-65/liter',
+            productRequested: 'Stone-Ground Wheat Flour',
+            quantity: '25 kg',
+            priceRange: '₹32-38/kg',
             timestamp: '2024-01-14 10:30',
             status: 'pending'
+        }
+    ]
+
+    const quickActions = [
+        {
+            id: 'retailer-feedback',
+            title: currentLang === 'en' ? 'Customer Feedback' : 'ग्राहक प्रतिक्रिया',
+            description:
+                currentLang === 'en'
+                    ? 'Review ratings, comments, and follow up from one place'
+                    : 'रेटिंग, टिप्पणियाँ और फॉलो-अप एक ही स्थान पर देखें',
+            icon: ChatBubbleLeftRightIcon,
+            href: '/dashboard/retailer/feedback',
+            color: 'bg-teal-500'
+        },
+        {
+            id: 'retailer-analytics',
+            title: currentLang === 'en' ? 'Analytics' : 'विश्लेषण',
+            description:
+                currentLang === 'en'
+                    ? 'Track store performance trends'
+                    : 'स्टोर प्रदर्शन रुझानों का विश्लेषण करें',
+            icon: ChartBarIcon,
+            href: '/dashboard/retailer/analytics',
+            color: 'bg-purple-500'
         }
     ]
 
@@ -146,107 +290,195 @@ export default function RetailerDashboard() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <header className="bg-white shadow-sm">
+            <header className="bg-white shadow-sm border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                                <BuildingStorefrontIcon className="w-6 h-6 text-white" />
-                            </div>
-                            <div>
-                                <h1 className={`text-2xl font-bold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Retailer Dashboard' : 'रिटेलर डैशबोर्ड'}
-                                </h1>
-                                <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Fresh Mart Delhi - Store Management' : 'फ्रेश मार्ट दिल्ली - स्टोर प्रबंधन'}
-                                </p>
+                        <div className="flex items-center space-x-4">
+                            <Link href="/" className="flex items-center space-x-2">
+                                <span className="text-2xl">🌾</span>
+                                <span className="text-2xl font-bold text-gray-900">
+                                    {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
+                                </span>
+                            </Link>
+                            <div className="text-sm text-gray-500">
+                                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                                    {roleLabel}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <button
+                                    ref={notificationsButtonRef}
+                                    type="button"
+                                    onClick={handleNotificationsClick}
+                                    className="relative rounded-full p-1 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    aria-haspopup="true"
+                                    aria-expanded={showNotificationPopup}
+                                    aria-label={currentLang === 'en' ? 'View notifications' : 'अधिसूचनाएं देखें'}
+                                >
+                                    <BellIcon className="w-6 h-6" />
+                                    {hasUnreadNotifications && (
+                                        <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-red-500"></span>
+                                    )}
+                                </button>
+                                {showNotificationPopup && (
+                                    <div
+                                        ref={notificationsPanelRef}
+                                        className="absolute right-0 mt-3 w-80 rounded-xl border border-gray-200 bg-white shadow-lg z-50"
+                                    >
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <h3 className={`text-sm font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                {currentLang === 'en' ? 'Notifications' : 'अधिसूचनाएं'}
+                                            </h3>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto py-2">
+                                            {notifications.length === 0 ? (
+                                                <p className={`px-4 py-3 text-sm text-gray-500 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                    {currentLang === 'en' ? 'No notifications yet' : 'अभी कोई अधिसूचना नहीं'}
+                                                </p>
+                                            ) : (
+                                                notifications.map((notification) => (
+                                                    <div
+                                                        key={notification.id}
+                                                        className={`px-4 py-3 text-sm ${notification.isNew ? 'bg-purple-50' : 'bg-white'} border-t border-gray-100 first:border-t-0`}
+                                                    >
+                                                        <p className={`text-gray-800 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                            {notification.message}
+                                                        </p>
+                                                        <p className="mt-1 text-xs text-gray-500">{notification.timestamp}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-md transition-colors"
-                            >
-                                <GlobeAltIcon className="w-4 h-4" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
+                            <LanguageToggle />
                         </div>
                     </div>
                 </div>
             </header>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mb-8">
+                    <h1 className={`text-3xl font-bold text-gray-900 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                        {currentLang === 'en'
+                            ? user?.name
+                                ? `Welcome back, ${user.name}!`
+                                : 'Welcome back!'
+                            : user?.name
+                                ? `स्वागत है, ${user.name}!`
+                                : 'फिर से स्वागत है!'}
+                    </h1>
+                    <p className={`text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                        {welcomeSubtitle}
+                    </p>
+                </div>
+
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-purple-100">
+                                <ShoppingCartIcon className="w-6 h-6 text-purple-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Total Products' : 'कुल उत्पाद'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">{stats.totalProducts}</p>
                             </div>
-                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <ShoppingCartIcon className="w-6 h-6 text-purple-600" />
-                            </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-green-100">
+                                <CurrencyRupeeIcon className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? "Today's Sales" : 'आज की बिक्री'}
                                 </p>
                                 <p className="text-2xl font-bold text-gray-900">₹{formatNumber(stats.todaySales)}</p>
                             </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                <CurrencyRupeeIcon className="w-6 h-6 text-green-600" />
-                            </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-yellow-100">
+                                <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Pending Orders' : 'लंबित ऑर्डर'}
+                                    {currentLang === 'en' ? 'Low Stock Alerts' : 'कम स्टॉक चेतावनी'}
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">{stats.pendingOrders}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                <ClockIcon className="w-6 h-6 text-yellow-600" />
+                                <p className="text-2xl font-bold text-gray-900">{stats.lowStockAlerts}</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex items-center">
+                            <div className="p-3 rounded-lg bg-blue-100">
+                                <StarIcon className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div className="ml-4">
                                 <p className={`text-sm font-medium text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Customer Rating' : 'ग्राहक रेटिंग'}
                                 </p>
-                                <p className="text-2xl font-bold text-gray-900">{stats.customerSatisfaction}★</p>
-                            </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <StarIcon className="w-6 h-6 text-blue-600" />
+                                <p className="text-2xl font-bold text-gray-900">{stats.customerSatisfaction}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Inventory Management */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-xl shadow-sm border">
+                    {/* Main Column */}
+                    <div className="lg:col-span-2 space-y-8">
+                        <div>
+                            <h2 className={`text-xl font-semibold mb-4 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                {currentLang === 'en' ? 'Quick Actions' : 'त्वरित कार्य'}
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {quickActions.map((action) => {
+                                    const IconComponent = action.icon
+                                    return (
+                                        <Link
+                                            key={action.id}
+                                            href={action.href}
+                                            className="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow"
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className={`p-3 rounded-lg ${action.color}`}>
+                                                    <IconComponent className="w-6 h-6 text-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className={`font-semibold text-gray-900 mb-1 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        {action.title}
+                                                    </h3>
+                                                    <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        {action.description}
+                                                    </p>
+                                                </div>
+                                                <ArrowRightIcon className="w-5 h-5 text-gray-400" />
+                                            </div>
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        <div id="retailer-inventory" className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b border-gray-200">
                                 <div className="flex justify-between items-center">
                                     <h2 className={`text-xl font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                         {currentLang === 'en' ? 'Current Inventory' : 'वर्तमान इन्वेंटरी'}
                                     </h2>
-                                    {/* Header marketplace button removed; marketplace shown as quick-action card in sidebar */}
                                 </div>
                             </div>
                             <div className="divide-y divide-gray-200">
@@ -255,7 +487,9 @@ export default function RetailerDashboard() {
                                         <div className="flex items-start justify-between mb-4">
                                             <div className="flex-1">
                                                 <div className="flex items-center space-x-3 mb-2">
-                                                    <h3 className="font-semibold text-gray-900">{item.product}</h3>
+                                                    <h3 className={`font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        {translateCommodity(item.product)}
+                                                    </h3>
                                                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStockStatusColor(item.status)}`}>
                                                         {getStockStatusText(item.status)}
                                                     </span>
@@ -264,11 +498,11 @@ export default function RetailerDashboard() {
                                                         <span className="text-sm font-medium text-gray-700 ml-1">{item.qualityScore}</span>
                                                     </div>
                                                 </div>
-                                                <p className="text-sm text-gray-600 mb-2">
+                                                <p className={`text-sm text-gray-600 mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                     {currentLang === 'en' ? 'Farmer:' : 'किसान:'} {item.farmer} |
                                                     {currentLang === 'en' ? ' Batch:' : ' बैच:'} {item.batchId}
                                                 </p>
-                                                <p className="text-sm text-gray-600">
+                                                <p className={`text-sm text-gray-600 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                     {currentLang === 'en' ? 'Stock:' : 'स्टॉक:'} {item.remaining} / {item.quantity} |
                                                     {currentLang === 'en' ? ' Price:' : ' मूल्य:'} ₹{item.price}/kg
                                                 </p>
@@ -320,47 +554,49 @@ export default function RetailerDashboard() {
 
                     {/* Sidebar */}
                     <div className="space-y-6">
-                        {/* Recent Orders */}
-                        <div className="bg-white rounded-xl shadow-sm border">
-                            <div className="p-6 border-b border-gray-200">
-                                <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Recent Orders' : 'हाल के ऑर्डर'}
-                                </h3>
-                            </div>
-                            <div className="p-6 space-y-4">
-                                {recentOrders.map((order) => (
-                                    <div key={order.id} className="border-l-4 border-purple-400 pl-4">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h4 className="font-medium text-gray-900">{order.customerName}</h4>
-                                                <p className="text-sm text-gray-600">{order.id}</p>
-                                            </div>
-                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                {order.status === 'completed'
-                                                    ? (currentLang === 'en' ? 'Completed' : 'पूर्ण')
-                                                    : (currentLang === 'en' ? 'Pending' : 'लंबित')
-                                                }
-                                            </span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            {order.items.map((item, index) => (
-                                                <p key={index} className="text-sm text-gray-600">
-                                                    {item.product} - {item.quantity}
-                                                </p>
-                                            ))}
-                                        </div>
-                                        <div className="flex justify-between items-center mt-2">
-                                            <span className="font-medium text-gray-900">₹{order.total}</span>
-                                            <span className="text-sm text-gray-500">{order.paymentMethod}</span>
-                                        </div>
+                        {/* Marketplace Spotlight */}
+                        <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-orange-100 p-6 shadow-sm">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="rounded-full bg-orange-500 p-3">
+                                        <ShoppingCartIcon className="w-6 h-6 text-white" />
                                     </div>
-                                ))}
+                                    <div>
+                                        <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {currentLang === 'en' ? 'Marketplace' : 'बाज़ार'}
+                                        </h3>
+                                        <p className={`text-sm text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {currentLang === 'en'
+                                                ? 'Browse verified demand, list your produce, and track negotiations in one place.'
+                                                : 'सत्यापित मांग देखें, अपना उत्पाद सूचीबद्ध करें और सभी बातचीत एक ही स्थान पर ट्रैक करें।'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm text-gray-700">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">
+                                            {currentLang === 'en' ? 'Fresh listings' : 'नई सूचियाँ'}
+                                        </p>
+                                        <p className="mt-1 text-2xl font-semibold text-gray-900">18</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-orange-500">
+                                            {currentLang === 'en' ? 'Active buyers' : 'सक्रिय खरीदार'}
+                                        </p>
+                                        <p className="mt-1 text-2xl font-semibold text-gray-900">9</p>
+                                    </div>
+                                </div>
+                                <Link
+                                    href="/marketplace"
+                                    className="inline-flex w-full items-center justify-center rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-orange-600"
+                                >
+                                    {currentLang === 'en' ? 'Open Marketplace' : 'बाज़ार खोलें'}
+                                </Link>
                             </div>
                         </div>
 
                         {/* Customer Requests */}
-                        <div className="bg-white rounded-xl shadow-sm border">
+                        <div id="retailer-customer-requests" className="bg-white rounded-xl shadow-sm border">
                             <div className="p-6 border-b border-gray-200">
                                 <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                     {currentLang === 'en' ? 'Customer Requests' : 'ग्राहक अनुरोध'}
@@ -375,13 +611,13 @@ export default function RetailerDashboard() {
                                                 {currentLang === 'en' ? 'Pending' : 'लंबित'}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-gray-600 mb-1">
-                                            {currentLang === 'en' ? 'Product:' : 'उत्पाद:'} {request.productRequested}
+                                        <p className={`text-sm text-gray-600 mb-1 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            {currentLang === 'en' ? 'Product:' : 'उत्पाद:'} {translateCommodity(request.productRequested)}
                                         </p>
-                                        <p className="text-sm text-gray-600 mb-1">
+                                        <p className={`text-sm text-gray-600 mb-1 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                             {currentLang === 'en' ? 'Quantity:' : 'मात्रा:'} {request.quantity}
                                         </p>
-                                        <p className="text-sm text-gray-600 mb-3">
+                                        <p className={`text-sm text-gray-600 mb-3 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                             {currentLang === 'en' ? 'Budget:' : 'बजट:'} {request.priceRange}
                                         </p>
                                         <div className="flex space-x-2">
@@ -397,36 +633,6 @@ export default function RetailerDashboard() {
                             </div>
                         </div>
 
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-xl shadow-sm border">
-                            <div className="p-6 border-b border-gray-200">
-                                <h3 className={`text-lg font-semibold text-gray-900 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    {currentLang === 'en' ? 'Quick Actions' : 'त्वरित कार्य'}
-                                </h3>
-                            </div>
-                            <div className="p-6 space-y-3">
-                                <a href="/marketplace" className="block bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-                                    <div className="flex items-start space-x-3">
-                                        <div className="p-2 rounded-lg bg-purple-50">
-                                            <ShoppingCartIcon className="w-5 h-5 text-purple-600" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-gray-900">{currentLang === 'en' ? 'Marketplace' : 'मार्केटप्लेस'}</h4>
-                                            <p className="text-sm text-gray-600">{currentLang === 'en' ? 'Browse products from suppliers' : 'आपूर्तिकर्ताओं से उत्पाद ब्राउज़ करें'}</p>
-                                        </div>
-                                    </div>
-                                </a>
-
-                                <button className={`w-full bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <ChartBarIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Sales Analytics' : 'बिक्री एनालिटिक्स'}</span>
-                                </button>
-                                <button className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
-                                    <TruckIcon className="w-5 h-5" />
-                                    <span>{currentLang === 'en' ? 'Track Deliveries' : 'डिलीवरी ट्रैक करें'}</span>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
