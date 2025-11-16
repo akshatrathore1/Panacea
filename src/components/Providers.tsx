@@ -62,7 +62,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setIsConnected(false)
     }
 
-       useEffect(() => {
+    useEffect(() => {
         const savedUser = localStorage.getItem('krishialok_user')
         if (savedUser) {
             try {
@@ -91,7 +91,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     web3Provider.getSigner().then((s) => {
                         setSigner(s)
                         setIsConnected(true)
-                    }).catch(() => {})
+                    }).catch(() => { })
                 }
             }).catch(() => {
                 // ignore errors — do not trigger any wallet prompt
@@ -168,22 +168,22 @@ export function Providers({ children }: { children: React.ReactNode }) {
                         // After successful MetaMask login, go to role-specific dashboard
                         try {
                             router.replace(`/dashboard/${profile.role || 'consumer'}`)
-                        } catch (e) {
-                            // Fallback if router.replace isn't available for some reason
+                        } catch (navigationError) {
+                            console.warn('Navigation fallback after MetaMask login:', navigationError)
                             window.location.href = `/dashboard/${profile.role || 'consumer'}`
                         }
-            // Initialize contract
-            if (!hasConfiguredContract) {
-                console.warn('Smart contract address is not configured. Update NEXT_PUBLIC_CONTRACT_ADDRESS (or edit Providers.tsx) to enable blockchain features.')
-            } else {
-                try {
-                    const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, contractABI, web3Signer)
-                    setContract(contractInstance)
-                    console.log('✅ Contract connected:', CONTRACT_ADDRESS)
-                } catch (err) {
-                    console.error('❌ Failed to initialize contract:', err)
-                }
-            }
+                        // Initialize contract
+                        if (!hasConfiguredContract) {
+                            console.warn('Smart contract address is not configured. Update NEXT_PUBLIC_CONTRACT_ADDRESS (or edit Providers.tsx) to enable blockchain features.')
+                        } else {
+                            try {
+                                const contractInstance = new ethers.Contract(CONTRACT_ADDRESS, contractABI, web3Signer)
+                                setContract(contractInstance)
+                                console.log('✅ Contract connected:', CONTRACT_ADDRESS)
+                            } catch (err) {
+                                console.error('❌ Failed to initialize contract:', err)
+                            }
+                        }
 
 
                         return web3Signer
@@ -212,7 +212,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
                         setUser(parsed)
                         try {
                             router.replace(`/dashboard/${parsed.role || 'consumer'}`)
-                        } catch (e) {
+                        } catch (navigationError) {
+                            console.warn('Navigation fallback when using cached profile:', navigationError)
                             window.location.href = `/dashboard/${parsed.role || 'consumer'}`
                         }
                         return web3Signer
@@ -234,14 +235,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
             }
 
             return web3Signer
-        } catch (error: any) {
-            // Improve error logging so the console shows a helpful message and details
-            try {
-                const details = error && error.message ? error.message : JSON.stringify(error)
-                console.error('Failed to connect wallet:', details, error)
-            } catch (logErr) {
-                console.error('Failed to connect wallet (unable to stringify error):', error)
-            }
+        } catch (error: unknown) {
+            const details = error instanceof Error
+                ? error.message
+                : (() => {
+                    try {
+                        return JSON.stringify(error)
+                    } catch {
+                        return 'Unknown error'
+                    }
+                })()
+            console.error('Failed to connect wallet:', details, error)
             return null
         } finally {
             setIsLoading(false)
@@ -254,6 +258,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setContract(null)
         setUser(null)
         setIsConnected(false)
+        setWalletExplicitlyConnected(false)
         localStorage.removeItem('krishialok_user')
     }
 
@@ -340,12 +345,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         setLocalUser
         ,
         walletExplicitlyConnected
-    }
-    
-    const handleLogout = () => {
-        disconnectWallet()
-        // Ensure we land on home/login after logout
-        try { router.replace('/') } catch (e) { window.location.href = '/' }
     }
 
     return (

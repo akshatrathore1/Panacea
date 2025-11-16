@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useState, useEffect, Suspense, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
 import type { UserRole } from '@/types/user'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
 
 const ROLE_OPTIONS: UserRole[] = ['producer', 'intermediary', 'retailer', 'consumer']
 import {
@@ -13,25 +14,20 @@ import {
     PhoneIcon,
     IdentificationIcon,
     WalletIcon,
-    ArrowLeftIcon,
-    GlobeAltIcon
+    ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
 
 function RegisterContent() {
-    const { t, i18n } = useTranslation()
+    const { t } = useTranslation()
     const router = useRouter()
     const searchParams = useSearchParams()
     const { connectWallet, registerUser, isConnected, user, isLoading, setLocalUser, walletExplicitlyConnected, provider, signer } = useWeb3()
-    const pathname = usePathname()
 
     // Safely navigate to a new path: skip replace if already on the same path,
     // otherwise attempt replace and fall back to push if replace doesn't take effect.
-    const safeReplace = async (target: string) => {
+    const safeReplace = useCallback(async (target: string) => {
         try {
-            // Use router.replace and rely on Next's navigation handling.
-            // If it throws for any reason, fall back to router.push, and
-            // as a last resort use window.location.href.
             await router.replace(target)
         } catch (err) {
             console.error('Navigation error (safeReplace):', err)
@@ -39,12 +35,14 @@ function RegisterContent() {
                 router.push(target)
             } catch (pushErr) {
                 console.error('Fallback push failed:', pushErr)
-                try { window.location.href = target } catch (e) { /* final fallback ignored */ }
+                try { window.location.href = target } catch {
+                    /* final fallback ignored */
+                }
             }
         }
-    }
+    }, [router])
 
-    const currentLang = i18n.language || 'en'
+    const { language: currentLang } = useLanguage()
     const [step, setStep] = useState(1)
     const [selectedRole, setSelectedRole] = useState<UserRole | ''>('')
     const [formData, setFormData] = useState({
@@ -69,7 +67,7 @@ function RegisterContent() {
         if (selectedRole === 'consumer' && step > 2) {
             setStep(2)
         }
-    }, [selectedRole])
+    }, [selectedRole, step])
 
     // Automatic redirect: if a persisted user exists or a connected wallet maps
     // to a registered profile, navigate to the dashboard immediately.
@@ -91,30 +89,45 @@ function RegisterContent() {
                         return
                     }
                 }
-            } catch (err) {
+            } catch {
                 // ignore
             }
 
             try {
                 let addr: string | null = null
                 if (signer) {
-                    try { addr = (await signer.getAddress()).toLowerCase() } catch (e) { addr = null }
+                    try { addr = (await signer.getAddress()).toLowerCase() } catch {
+                        addr = null
+                    }
                 }
 
                 if (!addr && provider) {
                     try {
                         const accounts = await provider.listAccounts()
                         if (accounts && accounts.length > 0) {
-                            const first: any = accounts[0]
-                            if (typeof first === 'string') {
-                                addr = first.toLowerCase()
-                            } else if (first && typeof first.getAddress === 'function') {
-                                try { addr = (await first.getAddress()).toLowerCase() } catch (e) { /* ignore */ }
-                            } else if (first && (first as any).address) {
-                                addr = String((first as any).address).toLowerCase()
+                            const firstAccount = accounts[0] as unknown
+                            if (typeof firstAccount === 'string') {
+                                addr = firstAccount.toLowerCase()
+                            } else if (
+                                firstAccount &&
+                                typeof (firstAccount as { getAddress?: unknown }).getAddress === 'function'
+                            ) {
+                                try {
+                                    const fetched = await (firstAccount as { getAddress: () => Promise<string> }).getAddress()
+                                    addr = fetched.toLowerCase()
+                                } catch {
+                                    // ignore nested failure
+                                }
+                            } else if (
+                                firstAccount &&
+                                typeof (firstAccount as { address?: unknown }).address === 'string'
+                            ) {
+                                addr = String((firstAccount as { address?: unknown }).address).toLowerCase()
                             }
                         }
-                    } catch (e) { /* ignore */ }
+                    } catch {
+                        // ignore
+                    }
                 }
 
                 if (addr) {
@@ -130,7 +143,14 @@ function RegisterContent() {
         }
 
         tryRedirectFromWallet()
-    }, [user, isConnected, provider, signer, setLocalUser])
+    }, [user, isConnected, provider, signer, safeReplace])
+
+    const roleBackgrounds: Record<UserRole, string> = {
+        producer: '/producer.jpg',
+        intermediary: '/intermediary.jpg',
+        retailer: '/retailer.jpg',
+        consumer: '/consumer.jpg'
+    }
 
     const roles: Array<{
         id: UserRole
@@ -138,6 +158,7 @@ function RegisterContent() {
         description: string
         icon: string
         benefits: string[]
+        bgImage: string
     }> = [
             {
                 id: 'producer',
@@ -148,7 +169,8 @@ function RegisterContent() {
                 icon: '🌾',
                 benefits: currentLang === 'en'
                     ? ['Create digital crop batches', 'Direct market access', 'Price transparency', 'Government schemes info']
-                    : ['डिजिटल फसल बैच बनाएं', 'प्रत्यक्ष बाजार पहुंच', 'मूल्य पारदर्शिता', 'सरकारी योजना जानकारी']
+                    : ['डिजिटल फसल बैच बनाएं', 'प्रत्यक्ष बाजार पहुंच', 'मूल्य पारदर्शिता', 'सरकारी योजना जानकारी'],
+                bgImage: roleBackgrounds.producer
             },
             {
                 id: 'intermediary',
@@ -159,7 +181,8 @@ function RegisterContent() {
                 icon: '🚛',
                 benefits: currentLang === 'en'
                     ? ['Bulk purchase management', 'Quality verification', 'Supply chain tracking', 'Inventory management']
-                    : ['थोक खरीद प्रबंधन', 'गुणवत्ता सत्यापन', 'आपूर्ति श्रृंखला ट्रैकिंग', 'इन्वेंटरी प्रबंधन']
+                    : ['थोक खरीद प्रबंधन', 'गुणवत्ता सत्यापन', 'आपूर्ति श्रृंखला ट्रैकिंग', 'इन्वेंटरी प्रबंधन'],
+                bgImage: roleBackgrounds.intermediary
             },
             {
                 id: 'retailer',
@@ -170,7 +193,8 @@ function RegisterContent() {
                 icon: '🏪',
                 benefits: currentLang === 'en'
                     ? ['Product authenticity verification', 'Customer trust building', 'Competitive pricing', 'Sales analytics']
-                    : ['उत्पाद प्रामाणिकता सत्यापन', 'ग्राहक विश्वास निर्माण', 'प्रतिस्पर्धी मूल्य निर्धारण', 'बिक्री विश्लेषण']
+                    : ['उत्पाद प्रामाणिकता सत्यापन', 'ग्राहक विश्वास निर्माण', 'प्रतिस्पर्धी मूल्य निर्धारण', 'बिक्री विश्लेषण'],
+                bgImage: roleBackgrounds.retailer
             },
             {
                 id: 'consumer',
@@ -181,19 +205,32 @@ function RegisterContent() {
                 icon: '👥',
                 benefits: currentLang === 'en'
                     ? ['Product traceability', 'Quality assurance', 'Price comparison', 'Farmer support']
-                    : ['उत्पाद अनुरेखणीयता', 'गुणवत्ता आश्वासन', 'मूल्य तुलना', 'किसान समर्थन']
+                    : ['उत्पाद अनुरेखणीयता', 'गुणवत्ता आश्वासन', 'मूल्य तुलना', 'किसान समर्थन'],
+                bgImage: roleBackgrounds.consumer
             }
         ]
-
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        i18n.changeLanguage(newLang)
-        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch { }
-    }
 
     const handleRoleSelect = (roleId: UserRole) => {
         setSelectedRole(roleId)
         setStep(2)
+    }
+
+    const handleBackClick = () => {
+        if (step > 1) {
+            if (step === 2) {
+                setOtpSent(false)
+                setOtp('')
+            }
+
+            if (step === 3) {
+                setProcessingSkip(false)
+            }
+
+            setStep((prev) => Math.max(1, prev - 1))
+            return
+        }
+
+        safeReplace('/')
     }
 
     const handleFormSubmit = async (e: React.FormEvent) => {
@@ -219,7 +256,11 @@ function RegisterContent() {
                     })
                     console.log('Registered consumer, saved profile:', saved)
                     // Ensure context/localStorage is set (registerUser persists, but call setLocalUser to be explicit)
-                    try { setLocalUser(saved) } catch (e) { /* ignore */ }
+                    try {
+                        setLocalUser(saved)
+                    } catch (persistError) {
+                        console.warn('Failed to persist consumer profile locally:', persistError)
+                    }
 
                     // Try replace first, then fallback to push after short delay if not redirected
                     await safeReplace(`/dashboard/${saved.role}`)
@@ -260,8 +301,8 @@ function RegisterContent() {
                 let walletAddr: string | null = null
                 try {
                     walletAddr = (await signer.getAddress()).toLowerCase()
-                } catch (e) {
-                    console.warn('Could not read address from signer after connect:', e)
+                } catch (addressError) {
+                    console.warn('Could not read address from signer after connect:', addressError)
                 }
 
                 const saved = await registerUser({
@@ -272,7 +313,11 @@ function RegisterContent() {
                 }, walletAddr ?? undefined)
 
                 // Ensure local context/localStorage updated and then navigate to dashboard
-                try { setLocalUser(saved) } catch (e) { /* ignore */ }
+                try {
+                    setLocalUser(saved)
+                } catch (persistError) {
+                    console.warn('Failed to persist wallet profile locally:', persistError)
+                }
 
                 try {
                     await safeReplace(`/dashboard/${saved.role}`)
@@ -293,7 +338,11 @@ function RegisterContent() {
             <header className="bg-white shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-4">
-                        <Link href="/" className="flex items-center space-x-3">
+                        <button
+                            type="button"
+                            onClick={handleBackClick}
+                            className="flex items-center space-x-3 text-left"
+                        >
                             <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
                             <div className="flex items-center space-x-2">
                                 <span className="text-2xl">🌾</span>
@@ -301,17 +350,11 @@ function RegisterContent() {
                                     {currentLang === 'en' ? 'KrashiAalok' : 'कृषिआलोक'}
                                 </span>
                             </div>
-                        </Link>
+                        </button>
 
                         <div className="flex items-center space-x-2">
                             <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
-                            >
-                                <GlobeAltIcon className="w-4 h-4" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
+                            <LanguageToggle />
                         </div>
                     </div>
                 </div>
@@ -373,22 +416,28 @@ function RegisterContent() {
                                 <div
                                     key={role.id}
                                     onClick={() => handleRoleSelect(role.id)}
-                                    className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer border-2 border-transparent hover:border-orange-200"
+                                    className="relative p-6 rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer border-2 border-transparent hover:border-orange-200 overflow-hidden group"
+                                    style={{
+                                        backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1)), url(${role.bgImage})`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center'
+                                    }}
                                 >
-                                    <div className="flex items-start space-x-4">
-                                        <div className="text-4xl">{role.icon}</div>
+                                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors" aria-hidden="true" />
+                                    <div className="relative flex items-start space-x-4 text-white">
+                                        <div className="w-12 h-12" aria-hidden="true" />
                                         <div className="flex-1">
                                             <h3 className={`text-xl font-semibold mb-2 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                 {role.title}
                                             </h3>
-                                            <p className={`text-gray-600 mb-4 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                            <p className={`text-white/90 mb-4 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                 {role.description}
                                             </p>
                                             <div className="space-y-2">
                                                 {role.benefits.slice(0, 2).map((benefit, index) => (
                                                     <div key={index} className="flex items-center space-x-2">
-                                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                        <span className={`text-sm text-gray-700 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
+                                                        <div className="w-2 h-2 bg-green-300 rounded-full" />
+                                                        <span className={`text-sm text-white/90 ${currentLang === 'hi' ? 'font-hindi' : ''}`}>
                                                             {benefit}
                                                         </span>
                                                     </div>
@@ -584,7 +633,11 @@ function RegisterContent() {
                                                             // Use role returned by server (saved profile) to redirect reliably
                                                             console.log('Registered (skip) saved profile:', saved)
                                                             // ensure local context updated
-                                                            try { setLocalUser(saved) } catch (e) { }
+                                                            try {
+                                                                setLocalUser(saved)
+                                                            } catch (persistError) {
+                                                                console.warn('Failed to persist skipped-wallet profile locally:', persistError)
+                                                            }
                                                             await safeReplace(`/dashboard/${saved.role}`)
                                                         } catch (err) {
                                                             console.error('Registration skipped wallet error:', err)

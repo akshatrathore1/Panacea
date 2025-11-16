@@ -1,38 +1,44 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useWeb3 } from '@/components/Providers'
 import Toast from '@/components/Toast'
-import type { UserProfile, UserRole } from '@/types/user'
 import {
     WalletIcon,
     PhoneIcon,
     ArrowLeftIcon,
-    GlobeAltIcon
 } from '@heroicons/react/24/outline'
 import LogoutButton from '@/components/LogoutButton'
+import LanguageToggle from '@/components/LanguageToggle'
+import { useLanguage } from '@/hooks/useLanguage'
 
 export default function LoginPage() {
-    const { t, i18n } = useTranslation()
     const router = useRouter()
     const { connectWallet, isConnected, user, isLoading, setLocalUser, provider, signer } = useWeb3()
-
-    const currentLang = i18n.language || 'en'
+    const { language: currentLang } = useLanguage()
     const [loginMethod, setLoginMethod] = useState<'wallet' | 'phone'>('wallet')
     const [phoneNumber, setPhoneNumber] = useState('')
     const [otp, setOtp] = useState('')
     const [otpSent, setOtpSent] = useState(false)
+
+    const redirectToDashboard = useCallback((role: string) => {
+        const target = `/dashboard/${role}`
+        try {
+            router.replace(target)
+        } catch (navigationError) {
+            console.warn('router.replace failed, falling back to push:', navigationError)
+            router.push(target)
+        }
+    }, [router])
 
 
     // Automatic redirect: if a persisted user exists or a connected wallet
     // corresponds to a registered profile, forward straight to the dashboard.
     useEffect(() => {
         if (user) {
-            // user already loaded into context -> go to their dashboard
-            try { router.replace(`/dashboard/${user.role}`) } catch (e) { router.push(`/dashboard/${user.role}`) }
+            redirectToDashboard(user.role)
             return
         }
 
@@ -45,11 +51,11 @@ export default function LoginPage() {
                 if (saved) {
                     const parsed = JSON.parse(saved)
                     if (parsed?.address) {
-                        try { router.replace(`/dashboard/${parsed.role || 'consumer'}`) } catch (e) { router.push(`/dashboard/${parsed.role || 'consumer'}`) }
+                        redirectToDashboard(parsed.role || 'consumer')
                         return
                     }
                 }
-            } catch (err) {
+            } catch {
                 // ignore parse error and continue
             }
 
@@ -57,23 +63,30 @@ export default function LoginPage() {
                 // Attempt to get address from signer/provider without prompting
                 let addr: string | null = null
                 if (signer) {
-                    try { addr = (await signer.getAddress()).toLowerCase() } catch (e) { addr = null }
+                    try { addr = (await signer.getAddress()).toLowerCase() } catch {
+                        addr = null
+                    }
                 }
 
                 if (!addr && provider) {
                     try {
-                        const accounts = await provider.listAccounts()
+                        const accounts = (await provider.listAccounts()) as unknown[]
                         if (accounts && accounts.length > 0) {
-                            const first: any = accounts[0]
+                            const first = accounts[0]
                             if (typeof first === 'string') {
                                 addr = first.toLowerCase()
-                            } else if (first && typeof first.getAddress === 'function') {
-                                try { addr = (await first.getAddress()).toLowerCase() } catch (e) { /* ignore */ }
-                            } else if (first && (first as any).address) {
-                                addr = String((first as any).address).toLowerCase()
+                            } else if (
+                                first &&
+                                typeof (first as { getAddress?: unknown }).getAddress === 'function'
+                            ) {
+                                try { addr = (await (first as { getAddress: () => Promise<string> }).getAddress()).toLowerCase() } catch {
+                                    // ignore nested failure
+                                }
+                            } else if (first && typeof (first as { address?: unknown }).address === 'string') {
+                                addr = String((first as { address?: unknown }).address).toLowerCase()
                             }
                         }
-                    } catch (e) {
+                    } catch {
                         // ignore
                     }
                 }
@@ -82,8 +95,12 @@ export default function LoginPage() {
                     const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
                     if (res.ok) {
                         const profile = await res.json()
-                        try { setLocalUser(profile) } catch (e) { }
-                        try { router.replace(`/dashboard/${profile.role}`) } catch (e) { router.push(`/dashboard/${profile.role}`) }
+                        try {
+                            setLocalUser(profile)
+                        } catch (persistError) {
+                            console.warn('Failed to persist wallet profile locally:', persistError)
+                        }
+                        redirectToDashboard(profile.role)
                     }
                 }
             } catch (err) {
@@ -92,13 +109,7 @@ export default function LoginPage() {
         }
 
         tryRedirectFromWallet()
-    }, [user, isConnected, provider, signer, router, setLocalUser])
-
-    const toggleLanguage = () => {
-        const newLang = currentLang === 'en' ? 'hi' : 'en'
-        i18n.changeLanguage(newLang)
-        try { if (typeof window !== 'undefined') localStorage.setItem('lang', newLang) } catch { }
-    }
+    }, [user, isConnected, provider, signer, redirectToDashboard, setLocalUser])
 
     const [toastMessage, setToastMessage] = useState<string | null>(null)
     const [toastType, setToastType] = useState<'info' | 'success' | 'error'>('info')
@@ -139,13 +150,15 @@ export default function LoginPage() {
                         return
                     }
                 }
-            } catch (err) {
+            } catch {
                 // ignore parse errors and continue
             }
 
             // Read the address from the signer and query the server explicitly
             let addr: string | null = null
-            try { addr = (await signer.getAddress()).toLowerCase() } catch (e) { addr = null }
+            try { addr = (await signer.getAddress()).toLowerCase() } catch {
+                addr = null
+            }
             if (!addr) {
                 showToast(currentLang === 'en' ? 'Unable to read wallet address' : 'वॉलेट पता पढ़ने में असमर्थ', 'error')
                 return
@@ -155,8 +168,12 @@ export default function LoginPage() {
                 const res = await fetch(`/api/users?address=${encodeURIComponent(addr)}`)
                 if (res.ok) {
                     const profile = await res.json()
-                    try { setLocalUser(profile) } catch (e) { }
-                    router.replace(`/dashboard/${profile.role}`)
+                    try {
+                        setLocalUser(profile)
+                    } catch (persistError) {
+                        console.warn('Failed to persist wallet profile locally:', persistError)
+                    }
+                    redirectToDashboard(profile.role)
                     return
                 }
 
@@ -198,7 +215,7 @@ export default function LoginPage() {
                     const profile = await res.json()
                     // Persist profile into Web3 context so other parts of app see logged-in user
                     setLocalUser(profile)
-                    router.replace(`/dashboard/${profile.role}`)
+                    redirectToDashboard(profile.role)
                     return
                 }
 
@@ -237,13 +254,7 @@ export default function LoginPage() {
 
                         <div className="flex items-center space-x-2">
                             <LogoutButton />
-                            <button
-                                onClick={toggleLanguage}
-                                className="flex items-center space-x-1 bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1 rounded-md transition-colors"
-                            >
-                                <GlobeAltIcon className="w-4 h-4" />
-                                <span>{currentLang === 'en' ? 'हिंदी' : 'English'}</span>
-                            </button>
+                            <LanguageToggle />
                         </div>
                     </div>
                 </div>

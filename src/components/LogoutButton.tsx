@@ -12,7 +12,7 @@ export default function LogoutButton({ className }: { className?: string }) {
         disconnectWallet()
         try {
             router.replace('/')
-        } catch (e) {
+        } catch {
             window.location.href = '/'
         }
     }
