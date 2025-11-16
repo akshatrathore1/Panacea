@@ -8,11 +8,15 @@ export async function GET() {
   try {
     const db = getFirestore();
     const snap = await db.collection(COLLECTION).orderBy('createdAt', 'desc').get();
-    const products: Product[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    const products: Product[] = snap.docs.map((doc) => {
+      const data = doc.data() as Omit<Product, 'id'>;
+      return { id: doc.id, ...data } as Product;
+    });
     return NextResponse.json(products);
-  } catch (err: any) {
-    console.error('GET /api/marketplace/products error:', err?.message ?? err);
-    return NextResponse.json({ error: err?.message ?? 'Internal error' }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('GET /api/marketplace/products error:', message, error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -31,6 +35,7 @@ export async function POST(req: Request) {
 
     // ensure firebase initialized
     const db = getFirestore();
+    const nowIso = new Date().toISOString();
     const newDoc: Partial<Product> = {
       name: String(body.name),
       quantity: Number(body.quantity),
@@ -41,16 +46,28 @@ export async function POST(req: Request) {
       harvestDate: body.harvestDate ?? null,
       producer: body.producer,
       status: 'active',
-      createdAt: new Date().toISOString(),
-      images: body.images ?? []
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      images: body.images ?? [],
+      batchId: body.batchId ?? undefined,
+      metadataHash: body.metadataHash ?? undefined,
+      metadataPath: body.metadataPath ?? undefined,
+      workflowActor: body.workflowActor ?? undefined
     };
 
     const ref = await db.collection(COLLECTION).add(newDoc);
-    const saved = (await ref.get()).data();
+    const savedSnapshot = await ref.get();
+    const savedData = savedSnapshot.data() as Omit<Product, 'id'> | undefined;
+    if (!savedData) {
+      throw new Error('Saved product data not found');
+    }
+
     console.log('DEBUG saved product id:', ref.id);
-    return NextResponse.json({ id: ref.id, ...(saved as any) }, { status: 201 });
-  } catch (err: any) {
-    console.error('POST /api/marketplace/products error:', err?.message ?? err, err?.stack);
-    return NextResponse.json({ error: err?.message ?? 'Internal error' }, { status: 500 });
+    const product: Product = { id: ref.id, ...savedData };
+    return NextResponse.json(product, { status: 201 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('POST /api/marketplace/products error:', message, error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

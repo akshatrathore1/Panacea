@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest, context: any) {
-  const { width, height } = context.params
+type PlaceholderParams = {
+  params: Promise<{
+    width: string
+    height: string
+  }>
+}
+
+export async function GET(request: NextRequest, context: PlaceholderParams) {
+  const params = await context.params
+  const { width, height } = params
   const { searchParams } = new URL(request.url)
   const text = searchParams.get('text') ?? `${width}x${height}`
 
