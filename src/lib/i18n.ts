@@ -1,5 +1,6 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import { LanguageCode, readStoredLanguage } from './language'
 
 const resources = {
     en: {
@@ -57,7 +58,7 @@ const resources = {
             "loading": "Loading",
 
             // Dashboard
-            "my_inventory": "My Inventory",
+            "my_inventory": "My Listings",
             "recent_transactions": "Recent Transactions",
             "create_new_batch": "Create New Batch",
             "available_produce": "Available Produce",
@@ -131,7 +132,7 @@ const resources = {
             "loading": "लोड हो रहा है",
 
             // Dashboard
-            "my_inventory": "मेरी सूची",
+            "my_inventory": "मेरी सूचियाँ",
             "recent_transactions": "हाल के लेनदेन",
             "create_new_batch": "नया बैच बनाएं",
             "available_produce": "उपलब्ध उत्पाद",
@@ -152,12 +153,17 @@ const resources = {
     }
 }
 
+const fallbackLanguage: LanguageCode = 'en'
+const initialLanguage: LanguageCode = typeof window !== 'undefined'
+    ? readStoredLanguage(fallbackLanguage)
+    : fallbackLanguage
+
 i18n
     .use(initReactI18next)
     .init({
         resources,
-        lng: 'en',
-        fallbackLng: 'en',
+        lng: initialLanguage,
+        fallbackLng: fallbackLanguage,
         interpolation: {
             escapeValue: false
         }
